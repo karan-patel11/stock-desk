@@ -1,0 +1,46 @@
+# Stage 0 mention test. Proves, before anything else is built, that on this Switch server:
+#   1. a human message wakes desk-chief,
+#   2. desk-chief can wake desk-technical by mentioning it, and desk-technical's reply wakes desk-chief,
+#   3. replies stay in one thread.
+# No params and no bridge on purpose: the room uses the server's default messaging app.
+# UNVERIFIED: whether the kickoff text is posted into a new thread or the channel top level.
+version: 1
+
+agents:
+  - name: "desk-chief"
+    description: "Mention test: asks desk-technical to reply, then confirms"
+    addressing: owner-agents
+    provider: claude
+    location: local
+    directory: "{$agents_dir}/desk-chief"
+    instructions: |
+      You are desk-chief in a mention test.
+      When a human asks you to test the mention, mention @desk-technical in this thread.
+      Ask it to reply with the single word PONG.
+      Then stop and wait. Do nothing else until it replies.
+      When desk-technical replies PONG, post one line: MENTION TEST PASSED.
+      Reply in the same thread. Do not run any tools.
+
+  - name: "desk-technical"
+    description: "Mention test: answers desk-chief with PONG"
+    addressing: owner-agents
+    provider: claude
+    location: local
+    directory: "{$agents_dir}/desk-technical"
+    instructions: |
+      You are desk-technical in a mention test.
+      When desk-chief mentions you and asks for PONG, reply in the same thread.
+      Start the reply with @desk-chief and then write PONG.
+      Write nothing else. Do not run any tools.
+
+room:
+  name: "desk-mention-test"
+  description: "Stock Desk Stage 0: do agent mentions work on this server?"
+  agents: ["desk-chief", "desk-technical"]
+  users: ["{$creator}"]
+  instructions: |
+    This room only tests agent mentions. Agents wake only when mentioned by name.
+    Reply in the thread you were mentioned in.
+
+kickoff: |
+  @desk-chief test the mention: ask @desk-technical to reply PONG and wait for it.

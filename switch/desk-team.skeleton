@@ -1,0 +1,92 @@
+# DO NOT EDIT switch/desk-team.template.yaml: scripts/build_template.py generates it from
+# switch/desk-team.skeleton (this text) and agents/*.md. Edit those, then rebuild.
+#
+# UNVERIFIED against Switch (check in Console if the template fails to load):
+#   - the params block shape (name, type, description, default keys)
+#   - whether placeholders in curly braces are substituted inside instructions and docs text
+#   - whether room names accept an upper-case ticker
+# Every other field comes from the Switch docs as quoted in the project context.
+version: 1
+
+params:
+  - name: ticker
+    type: string
+    description: "Stock ticker to analyze, for example NKE"
+  - name: stockdesk_home
+    type: string
+    description: "Absolute path of the stock-desk repo on the machine that runs the agents"
+  - name: python
+    type: string
+    default: "python3"
+    description: "Python 3.11+ interpreter with requirements.txt installed"
+  - name: bridge
+    type: bridge
+    description: "Messaging app for the room (Slack; Mattermost is the fallback)"
+
+agents:
+  - name: "desk-chief"
+    description: "Runs the Stock Desk process, verifies citations, cross-examines, writes the verdict"
+    addressing: owner-agents
+    provider: claude
+    location: local
+    directory: "{$agents_dir}/desk-chief"
+    instructions: |
+      @@INSTRUCTIONS:chief@@
+
+  - name: "desk-fundamental"
+    description: "Company financials from SEC filings, every figure cited"
+    addressing: owner-agents
+    provider: claude
+    location: local
+    directory: "{$agents_dir}/desk-fundamental"
+    instructions: |
+      @@INSTRUCTIONS:fundamental@@
+
+  - name: "desk-technical"
+    description: "Price trend and volume indicators, every figure cited"
+    addressing: owner-agents
+    provider: claude
+    location: local
+    directory: "{$agents_dir}/desk-technical"
+    instructions: |
+      @@INSTRUCTIONS:technical@@
+
+  - name: "desk-sentiment"
+    description: "News tone and dated precedent events, every claim sourced"
+    addressing: owner-agents
+    provider: claude
+    location: local
+    directory: "{$agents_dir}/desk-sentiment"
+    instructions: |
+      @@INSTRUCTIONS:sentiment@@
+
+room:
+  name: "desk-{ticker}"
+  description: "Stock Desk research room for {ticker}. Research only, not financial advice."
+  bridge: "{bridge}"
+  agents: ["desk-chief", "desk-fundamental", "desk-technical", "desk-sentiment"]
+  users: ["{$creator}"]
+  instructions: |
+    Stock Desk rules for everyone in this room.
+    1. Every number carries an evidence ID such as [E12]. No ID, no number. Agents never calculate or recall numbers.
+    2. If data is missing or a tool fails, say "no data" and name the gap. Never guess.
+    3. Research, not advice. No buy, sell, hold, price targets or guarantees.
+    4. Only desk-chief addresses the analysts. Analysts answer desk-chief and never mention each other.
+    5. One thread per run. Humans may interrupt at any time; desk-chief routes their message to the right analyst.
+    6. At most two rounds. Then desk-chief writes the verdict.
+  docs:
+    - name: "desk-rules"
+      description: "How the desk works, for humans joining the room"
+      instructions: "Read-only reference. Do not edit."
+      content: |
+        Stock Desk: how to use this room
+        Type: @desk-chief analyze {ticker}
+        Flow: fundamental, technical and sentiment analysts report with evidence IDs. desk-chief verifies every
+        number against the evidence ledger, asks follow-up questions (two rounds at most), orders a precedent
+        check, then posts and saves a verdict named verdict-<TICKER>-<date>.
+        Commands for desk-chief: "verdict now" skips to the verdict. "pause" holds until you say "resume".
+        You can interrupt at any time. Your message is treated as new evidence and routed to the right analyst.
+        Research only, not financial advice.
+
+kickoff: |
+  @desk-chief analyze {ticker}
