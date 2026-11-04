@@ -1,0 +1,11 @@
+{
+ "_note": "SYNTHETIC fixture for fictional company TSTCO; not a recorded SEC response.",
+ "cik": "1234567",
+ "name": "Test Footwear Co",
+ "sic": "3021",
+ "sicDescription": "Rubber & Plastics Footwear",
+ "fiscalYearEnd": "0531",
+ "tickers": [
+  "TSTCO"
+ ]
+}

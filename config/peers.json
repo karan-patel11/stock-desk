@@ -1,0 +1,13 @@
+{
+  "_note": "Curated peer lists for demo tickers. fund.py never guesses: a ticker missing here returns no peers. Review before the demo.",
+  "NKE": ["UAA", "LULU", "DECK", "ADDYY"],
+  "AAPL": ["MSFT", "GOOGL", "DELL", "HPQ"],
+  "MSFT": ["GOOGL", "ORCL", "AAPL", "AMZN"],
+  "TSLA": ["F", "GM", "RIVN"],
+  "KO": ["PEP", "KDP", "MDLZ"],
+  "PG": ["CL", "KMB", "CHD"],
+  "DIS": ["NFLX", "WBD", "CMCSA"],
+  "HD": ["LOW", "TSCO"],
+  "WMT": ["COST", "TGT", "KR"],
+  "COST": ["WMT", "TGT", "BJ"]
+}

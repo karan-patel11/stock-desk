@@ -1,0 +1,13 @@
+{
+ "_note": "SYNTHETIC fixture for fictional company TSTCO; not a recorded SEC response.",
+ "0": {
+  "cik_str": 1234567,
+  "ticker": "TSTCO",
+  "title": "Test Footwear Co"
+ },
+ "1": {
+  "cik_str": 7654321,
+  "ticker": "OTHER",
+  "title": "Other Corp"
+ }
+}

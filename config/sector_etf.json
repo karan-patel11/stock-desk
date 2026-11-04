@@ -1,0 +1,8 @@
+{
+  "_note": "Per-ticker overrides first, then optional SIC ranges. SIC does not map cleanly to sectors, so ranges are empty on purpose: an unmapped ticker fails closed and the chief passes --etf explicitly.",
+  "overrides": {
+    "NKE": "XLY", "AAPL": "XLK", "MSFT": "XLK", "TSLA": "XLY", "KO": "XLP",
+    "PG": "XLP", "DIS": "XLC", "HD": "XLY", "WMT": "XLP", "COST": "XLP"
+  },
+  "sic_ranges": []
+}
