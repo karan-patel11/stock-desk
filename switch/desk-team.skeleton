@@ -1,25 +1,30 @@
 # DO NOT EDIT switch/desk-team.template.yaml: scripts/build_template.py generates it from
 # switch/desk-team.skeleton (this text) and agents/*.md. Edit those, then rebuild.
 #
-# UNVERIFIED against Switch (check in Console if the template fails to load):
-#   - the params block shape (name, type, description, default keys)
-#   - whether placeholders in curly braces are substituted inside instructions and docs text
-#   - whether room names accept an upper-case ticker
-# Every other field comes from the Switch docs as quoted in the project context.
+# Checked against docs/TEMPLATES.md in sandbox-quantum/switch at commit 9619bc9:
+#   - params is a mapping keyed by name ("params: <name>: type/description/label/default/...")
+#   - a declared param's placeholder is substituted in any string of the document, so instructions and docs too
+#   - type: bridge with no default is required; the deployer picks the messaging app on the form
+# UNVERIFIED (the docs do not settle it):
+#   - whether a room name with an upper-case ticker is kept as written (docs only say "name: text")
+#   - whether the kickoff starts a new thread or posts at the channel top level
 version: 1
 
 params:
-  - name: ticker
+  ticker:
     type: string
+    label: Ticker
     description: "Stock ticker to analyze, for example NKE"
-  - name: stockdesk_home
+  stockdesk_home:
     type: string
+    label: Stock Desk folder
     description: "Absolute path of the stock-desk repo on the machine that runs the agents"
-  - name: python
+  python:
     type: string
+    label: Python interpreter
     default: "python3"
-    description: "Python 3.11+ interpreter with requirements.txt installed"
-  - name: bridge
+    description: "Python 3.11+ interpreter with requirements.txt installed, for example /abs/path/.venv/bin/python"
+  bridge:
     type: bridge
     description: "Messaging app for the room (Slack; Mattermost is the fallback)"
 

@@ -26,10 +26,14 @@ MARKER = re.compile(r"^(?P<indent>[ ]*)@@INSTRUCTIONS:(?P<name>[a-z]+)@@[ ]*$")
 SUBSTITUTIONS = (("$STOCKDESK_HOME", "{stockdesk_home}"), ("$STOCKDESK_PY", "{python}"))
 MAX_LINES = 60
 UNVERIFIED = (
-    "params: block shape (name/type/description/default)",
-    "{param} substitution inside instructions: and docs: text",
-    "upper-case ticker in the room name desk-{ticker}",
+    "upper-case ticker in the room name desk-{ticker} (TEMPLATES.md says only 'name: text')",
+    "whether the kickoff starts a new thread or posts at the channel top level",
 )
+# From docs/TEMPLATES.md, "Params" -> "Configuration model".
+PARAM_TYPES = {"string", "number", "boolean", "enum", "agent", "bridge", "room", "user",
+               "provider", "location", "machine", "directory"}
+PARAM_KEYS = {"type", "description", "label", "default", "required", "input", "enum", "multiline",
+              "pattern", "min", "max"}
 
 
 def agent_text(name: str) -> str:
@@ -77,6 +81,14 @@ def validate(text: str) -> str:
     except ImportError:
         return "PyYAML not installed: YAML syntax not validated (pip install pyyaml to check)"
     doc = yaml.safe_load(text)
+    params = doc["params"]
+    assert isinstance(params, dict), "params must be a mapping keyed by param name (TEMPLATES.md)"
+    for key, spec in params.items():
+        assert re.fullmatch(r"[a-z_][a-z0-9_]*", key), f"param name {key!r} is not a plain identifier"
+        assert set(spec) <= PARAM_KEYS, f"param {key}: unknown keys {sorted(set(spec) - PARAM_KEYS)}"
+        assert spec.get("type", "string") in PARAM_TYPES, f"param {key}: unknown type {spec.get('type')!r}"
+    used = set(re.findall(r"\{([a-z_][a-z0-9_]*)\}", text))
+    assert used == set(params), f"declared params {sorted(params)} vs used placeholders {sorted(used)}"
     names = [a["name"] for a in doc["agents"]]
     assert names == ["desk-chief", "desk-fundamental", "desk-technical", "desk-sentiment"], names
     assert doc["room"]["agents"] == names
