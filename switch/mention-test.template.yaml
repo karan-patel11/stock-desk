@@ -1,9 +1,11 @@
 # Stage 0 mention test (runbook: docs/stage0.md). Proves, before anything else is built, that on this Switch server:
-#   1. the kickoff wakes desk-chief,
-#   2. desk-chief can wake desk-technical by mentioning it, and desk-technical's reply wakes desk-chief,
+#   1. the kickoff wakes s0-chief,
+#   2. s0-chief can wake s0-technical by mentioning it, and s0-technical's reply wakes s0-chief,
 #   3. replies stay in one thread,
-#   4. a human message in the thread that mentions desk-chief gets a reply,
+#   4. a human message in the thread that mentions s0-chief gets a reply,
 #   5. a room document an agent creates is still in the room on a second request in the same room.
+# The agents are s0-chief and s0-technical, not desk-chief and desk-technical, on purpose: docs/TEMPLATES.md says an
+# existing agent name "blocks creation with a message", so reusing the desk names would block desk-team.template.yaml.
 # No params and no bridge on purpose. docs/TEMPLATES.md: "Without bridge: the room is created on the server's
 # default messaging app; on a server with none, it is a Switch-only room."
 # UNVERIFIED (docs/TEMPLATES.md does not settle it): whether the kickoff starts a new thread or posts at the
@@ -11,46 +13,46 @@
 version: 1
 
 agents:
-  - name: "desk-chief"
-    description: "Mention test: asks desk-technical to reply, then checks a room document"
+  - name: "s0-chief"
+    description: "Mention test: asks s0-technical to reply, then checks a room document"
     addressing: owner-agents
     provider: claude
     location: local
-    directory: "{$agents_dir}/desk-chief"
+    directory: "{$agents_dir}/s0-chief"
     instructions: |
-      You are desk-chief in a mention test. Use only your Switch room tools; run no other tools.
+      You are s0-chief in a mention test. Use only your Switch room tools; run no other tools.
       Reply in the same thread every time.
       When a human asks you to test the mention:
-      1. Mention @desk-technical in this thread and ask it to reply with the single word PONG. Then wait.
-      2. When desk-technical replies PONG, post one line: MENTION TEST PASSED
+      1. Mention @s0-technical in this thread and ask it to reply with the single word PONG. Then wait.
+      2. When s0-technical replies PONG, post one line: MENTION TEST PASSED
       3. Check whether this room already has a room document named stage0-check.
          If it does not, create it with create_room_document: name stage0-check, description
-         "Stage 0 persistence check", content "Created by desk-chief in the first Stage 0 run."
+         "Stage 0 persistence check", content "Created by s0-chief in the first Stage 0 run."
          Then post one line: DOCUMENT CREATED: stage0-check
          If it already exists, post one line: DOCUMENT FOUND: stage0-check
       If a human mentions you in the thread at any other time, reply with one line that starts with
       HEARD YOU: and sums up their message in a few words. Then carry on with the test.
 
-  - name: "desk-technical"
-    description: "Mention test: answers desk-chief with PONG"
+  - name: "s0-technical"
+    description: "Mention test: answers s0-chief with PONG"
     addressing: owner-agents
     provider: claude
     location: local
-    directory: "{$agents_dir}/desk-technical"
+    directory: "{$agents_dir}/s0-technical"
     instructions: |
-      You are desk-technical in a mention test.
-      When desk-chief mentions you and asks for PONG, reply in the same thread.
-      Start the reply with @desk-chief and then write PONG.
+      You are s0-technical in a mention test.
+      When s0-chief mentions you and asks for PONG, reply in the same thread.
+      Start the reply with @s0-chief and then write PONG.
       Write nothing else. Do not run any tools.
 
 room:
   name: "desk-mention-test"
   description: "Stock Desk Stage 0: do agent mentions and room documents work on this server?"
-  agents: ["desk-chief", "desk-technical"]
+  agents: ["s0-chief", "s0-technical"]
   users: ["{$creator}"]
   instructions: |
     This room only tests agent mentions and room documents. Agents wake only when mentioned by name.
     Reply in the thread you were mentioned in.
 
 kickoff: |
-  @desk-chief test the mention: ask @desk-technical to reply PONG and wait for it.
+  @s0-chief test the mention: ask @s0-technical to reply PONG and wait for it.

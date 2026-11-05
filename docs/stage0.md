@@ -5,8 +5,10 @@ on them. Every step below cites the Switch doc it comes from, as a path in
 [sandbox-quantum/switch](https://github.com/sandbox-quantum/switch) (read at commit `9619bc9`). Where the docs do not
 settle something, the step says **unverified**.
 
-Template: `switch/mention-test.template.yaml`. It creates `desk-chief` and `desk-technical` (Claude Code, this
-computer) and a room `desk-mention-test` on the server's default messaging app.
+Template: `switch/mention-test.template.yaml`. It creates `s0-chief` and `s0-technical` (Claude Code, this
+computer) and a room `desk-mention-test` on the server's default messaging app. They stand in for desk-chief and
+desk-technical: the mention mechanics are the same, and separate names keep Stage 0 from blocking the desk template
+(see [After Stage 0](#after-stage-0)).
 
 ## What you need on this Mac
 
@@ -83,25 +85,25 @@ it, then posts the kickoff."
 
 Tick each one in order. If a step fails, stop and use the table at the end.
 
-- [ ] **1. Kickoff wakes desk-chief.** The kickoff is "Posted into the room on behalf of the deployer once the room
+- [ ] **1. Kickoff wakes s0-chief.** The kickoff is "Posted into the room on behalf of the deployer once the room
   exists and its members have joined. An agent starts working when a message addresses it" (`docs/TEMPLATES.md`,
-  Kickoff). You see desk-chief reply.
-- [ ] **2. desk-chief mentions desk-technical**, in a message containing `@desk-technical` and PONG.
-- [ ] **3. desk-technical replies** `@desk-chief PONG`.
-- [ ] **4. The reply wakes desk-chief**, which posts `MENTION TEST PASSED`.
+  Kickoff). You see s0-chief reply.
+- [ ] **2. s0-chief mentions s0-technical**, in a message containing `@s0-technical` and PONG.
+- [ ] **3. s0-technical replies** `@s0-chief PONG`.
+- [ ] **4. The reply wakes s0-chief**, which posts `MENTION TEST PASSED`.
 - [ ] **5. One thread.** All of the above sits under the kickoff in one thread. Basis:
   `internals/collaboration-bridge.md`, "A reply carries the event id it replies to. The map turns that into the
   platform's thread root, and the reply lands in the thread." **Unverified:** whether the kickoff itself starts a thread
   or sits at the channel top level; the docs do not say. Write down which you see.
 - [ ] **6. A mid-thread human message gets a reply.** In the same thread, post
-  `@desk-chief are you still there?`. Include the mention: `using/what-comes-back.md` lists "you replied in a thread
+  `@s0-chief are you still there?`. Include the mention: `using/what-comes-back.md` lists "you replied in a thread
   without repeating the address" as a cause of silence. Expect a line starting `HEARD YOU:`.
-- [ ] **7. Room document created.** After `MENTION TEST PASSED`, desk-chief posts `DOCUMENT CREATED: stage0-check`.
+- [ ] **7. Room document created.** After `MENTION TEST PASSED`, s0-chief posts `DOCUMENT CREATED: stage0-check`.
   Then send `!list-documents` in the channel; `stage0-check` should be listed. `using/shared-context.md`: "Post
   `!list-documents` in the channel to see what the room holds at all ... The documents live on the Switch server".
-- [ ] **8. It survives a second run.** Clear desk-chief's memory with `!reset @desk-chief` ("Clears an agent's context
+- [ ] **8. It survives a second run.** Clear s0-chief's memory with `!reset @s0-chief` ("Clears an agent's context
   and reconnects it.", `resources/room-commands.md`), then post a new message in the **same room**:
-  `@desk-chief test the mention again: ask @desk-technical to reply PONG and wait for it.`
+  `@s0-chief test the mention again: ask @s0-technical to reply PONG and wait for it.`
   Expect `MENTION TEST PASSED` and `DOCUMENT FOUND: stage0-check`, and `!list-documents` still lists it.
 
 Why the same room, not loading the template again: a room-scoped document "lives and dies with the room"
@@ -119,16 +121,21 @@ a manual poll." (`using/what-comes-back.md`).
 |---|---|---|
 | Nothing at all after the kickoff or a message | The message addressed nobody (missing `@`, misspelled name, or a thread reply without the mention), or a session is not receiving room events | `using/what-comes-back.md`; `resources/troubleshooting.md`, "Agent is connected but never answers" |
 | Agent says it only takes instructions from its owner / account not linked | Messaging account not linked | `getting-started/smoke-test.md`, "When a step doesn't match"; step B3 |
-| Agent says it is not available / no session connected | Nothing running behind it; Switch answered for it | `getting-started/smoke-test.md`; post `!run-cmd @desk-chief` for the start command (`using/what-comes-back.md`) |
+| Agent says it is not available / no session connected | Nothing running behind it; Switch answered for it | `getting-started/smoke-test.md`; post `!run-cmd @s0-chief` for the start command (`using/what-comes-back.md`) |
 | Switch Console: "Session did not start" | Claude Code is waiting on a trust or permission prompt in that session's terminal | `resources/troubleshooting.md` |
 | Agent never wakes, or "not found" naming Claude Code's built-in subagents | Missing `.claude/agents/<name>.md` in the agent's working directory | `resources/troubleshooting.md`, "Agent not found on launch" |
-| desk-technical never answers desk-chief | Addressing does not admit desk-chief, or desk-technical has no session | `getting-started/onboard-your-agents.md`, "Only me and my agents admits the agents you own"; `!agents-status` |
+| s0-technical never answers s0-chief | Addressing does not admit s0-chief, or s0-technical has no session | `getting-started/onboard-your-agents.md`, "Only me and my agents admits the agents you own"; `!agents-status` |
 | Every room stops responding | Network change (VPN, sleep) | `resources/troubleshooting.md`, "Every room stops responding" |
-| Template refused with `name_taken` | desk-chief or desk-technical already exists on the server | `docs/TEMPLATES.md`, The agent block |
+| Template refused with `name_taken` | s0-chief or s0-technical already exists (the template was loaded before); use the existing room, step 8 | `docs/TEMPLATES.md`, The agent block |
 
 ## After Stage 0
 
-The full desk (`switch/desk-team.template.yaml`) uses the same agent names. Per `docs/TEMPLATES.md`, an existing name
-"blocks creation with a message; nothing is renamed behind the deployer's back". The Switch docs describe removing an
-agent from a room (`!remove-agent`, `resources/room-commands.md`) but not deleting a registered agent, so settle this
-before loading the desk template.
+The Stage 0 agents are named `s0-chief` and `s0-technical` so they do not collide with the desk's `desk-chief`,
+`desk-fundamental`, `desk-technical` and `desk-sentiment`. Per `docs/TEMPLATES.md`, an existing name "blocks creation
+with a message; nothing is renamed behind the deployer's back", so the desk template can be loaded on the same server
+after Stage 0. The Stage 0 agents can stay registered; the Switch docs describe removing an agent from a room
+(`!remove-agent`, `resources/room-commands.md`) but not deleting a registered agent.
+
+Loading the desk template a second time (for another ticker) hits the same rule for the four desk agents.
+**Unverified:** whether `allow_existing: true` ("lets the deployer fill it with an agent the server already has instead
+of creating it", `docs/TEMPLATES.md`) would let a second load reuse them. Settle it before the second ticker.

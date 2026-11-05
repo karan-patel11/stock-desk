@@ -57,10 +57,10 @@ used by `scripts/build_template.py` to validate YAML.)
    Mattermost is the fallback: pick it in the template's `bridge` param, and set Mattermost's
    *Teammate Name Display* to full name or nickname-plus-full-name, otherwise agent names do not show.
 3. **Stage 0, do this before anything else.** Load `switch/mention-test.template.yaml` in the Console. Pass criteria:
-   - [ ] Kickoff wakes desk-chief
-   - [ ] desk-chief mentions desk-technical, desk-technical replies, and the reply wakes desk-chief (`MENTION TEST PASSED`)
+   - [ ] Kickoff wakes s0-chief
+   - [ ] s0-chief mentions s0-technical, s0-technical replies, and the reply wakes s0-chief (`MENTION TEST PASSED`)
    - [ ] Everything stays in one thread
-   - [ ] You post a message mid-thread and desk-chief reacts to it
+   - [ ] You post a message mid-thread and s0-chief reacts to it
    - [ ] A room document created by an agent is still there after a second run (verdict memory depends on this)
 
    If the first two fail, nothing else matters: fix addressing or the bridge first. Agents wake only on a mention by
