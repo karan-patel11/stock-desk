@@ -51,12 +51,17 @@ used by `scripts/build_template.py` to validate YAML.)
 
 ## Switch and Slack setup
 
-1. Run a Switch server (self-hosted, or the Railway template that bundles Switch) and connect the Switch Console to
-   the machine where this repo lives. The agents run there and need the venv above.
-2. Connect Slack to Switch using Switch's Slack bridge guide (Socket Mode). If Slack is a problem on the day,
-   Mattermost is the fallback: pick it in the template's `bridge` param, and set Mattermost's
-   *Teammate Name Display* to full name or nickname-plus-full-name, otherwise agent names do not show.
-3. **Stage 0, do this before anything else.** Load `switch/mention-test.template.yaml` in the Console. Pass criteria:
+`docs/stage0.md` is the step-by-step runbook, with every step cited to the Switch docs.
+
+1. Run a Switch server. Fastest for one person: Switch Console's **Run a server on this computer** (Switch docs,
+   `getting-started/add-a-server.md`). The agents run on the machine where this repo lives and need the venv above.
+   The Switch repository has no Railway template.
+2. Connect Slack to Switch with Switch's Slack guide (`deploy/messaging-apps/slack.md`, Socket Mode, no public address
+   needed). Slack is the Stage 0 bridge; Docker is not needed for it. Note the **Name** you give the connection: the
+   templates' **Messaging app** param asks for it. The built-in Mattermost (needs Docker) is the documented fallback
+   only; pick its connection for the same param instead.
+3. **Stage 0, do this before anything else.** Load `switch/mention-test.template.yaml` in the Console and pick the
+   Slack connection. Pass criteria:
    - [ ] Kickoff wakes s0-chief
    - [ ] s0-chief mentions s0-technical, s0-technical replies, and the reply wakes s0-chief (`MENTION TEST PASSED`)
    - [ ] Everything stays in one thread
@@ -64,7 +69,8 @@ used by `scripts/build_template.py` to validate YAML.)
    - [ ] A room document created by an agent is still there after a second run (verdict memory depends on this)
 
    If the first two fail, nothing else matters: fix addressing or the bridge first. Agents wake only on a mention by
-   routing name; Slack does not autocomplete agent names, so a typo looks like silence.
+   routing name. Slack completes agent names only on a paid plan with user-group permission (Switch's Slack guide);
+   otherwise type them in full, because a typo looks like silence.
 4. Build and load the desk: `python3 scripts/build_template.py`, then load `switch/desk-team.template.yaml` with params
    `ticker`, `stockdesk_home` (absolute path), `python` (the venv interpreter, for example `/abs/path/.venv/bin/python`)
    and `bridge`. The kickoff posts `@desk-chief analyze <ticker>`.
