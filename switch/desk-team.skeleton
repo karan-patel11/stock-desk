@@ -26,7 +26,8 @@ params:
     description: "Python 3.11+ interpreter with requirements.txt installed, for example /abs/path/.venv/bin/python"
   bridge:
     type: bridge
-    description: "Messaging app for the room (Slack; Mattermost is the fallback)"
+    label: Messaging app
+    description: "Pick your Slack connection (the Name you gave it in Switch). Mattermost only as the fallback."
 
 agents:
   - name: "desk-chief"

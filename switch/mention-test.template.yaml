@@ -6,11 +6,18 @@
 #   5. a room document an agent creates is still in the room on a second request in the same room.
 # The agents are s0-chief and s0-technical, not desk-chief and desk-technical, on purpose: docs/TEMPLATES.md says an
 # existing agent name "blocks creation with a message", so reusing the desk names would block desk-team.template.yaml.
-# No params and no bridge on purpose. docs/TEMPLATES.md: "Without bridge: the room is created on the server's
-# default messaging app; on a server with none, it is a Switch-only room."
+# Messaging app: Slack for Stage 0, Mattermost only as the fallback. The room's bridge is a param with no default:
+# docs/TEMPLATES.md says a bridge param's value is "The display name of a messaging app set up on the server" (the
+# Name given to the connection), and a param with no default is required, so the form asks you to pick it.
 # UNVERIFIED (docs/TEMPLATES.md does not settle it): whether the kickoff starts a new thread or posts at the
 # channel top level.
 version: 1
+
+params:
+  bridge:
+    type: bridge
+    label: Messaging app
+    description: "Pick your Slack connection (the Name you gave it in Switch). Mattermost only as the fallback."
 
 agents:
   - name: "s0-chief"
@@ -48,6 +55,7 @@ agents:
 room:
   name: "desk-mention-test"
   description: "Stock Desk Stage 0: do agent mentions and room documents work on this server?"
+  bridge: "{bridge}"
   agents: ["s0-chief", "s0-technical"]
   users: ["{$creator}"]
   instructions: |
