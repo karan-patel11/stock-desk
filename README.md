@@ -80,7 +80,7 @@ python tools/round.py start NKE | status | next | end
 python tools/fund.py NKE [--quarters 8]          # SEC XBRL: revenue, margins, EPS, debt, YoY (derived)
 python tools/tech.py NKE [--lookback 1y]         # SMA50/200, cross, RSI(14), ATR(14), volume ratio, 52-week range
 python tools/news.py "Nike" [--days 30]          # GDELT headlines, average tone, repeated title words
-python tools/precedent.py NKE --dates 2024-06-27,2024-12-19 [--etf XLY] [--windows 5,30] [--urls U1,U2]
+python tools/precedent.py NKE --dates 2024-06-27,2024-12-19 [--etf XLY] [--windows 5,30] [--urls U1,U2]   # example dates; use ones you have verified
 python tools/verify.py E12 --value 8.1%          # or --text-file report.txt to scan a whole report
 python scripts/build_template.py [--check]
 ```
