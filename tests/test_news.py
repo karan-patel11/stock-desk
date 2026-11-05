@@ -85,10 +85,11 @@ def test_requests_are_paced_for_gdelt(gdelt, run_id, monkeypatch):
 
 def test_second_call_is_served_from_cache(gdelt, run_id):
     calls, _ = gdelt
-    news.main(["Acme Corp"])
+    _, _, first = news.main(["Acme Corp"])
     count = len(calls)
-    news.main(["Acme Corp"])
+    _, _, second = news.main(["Acme Corp"])
     assert len(calls) == count
+    assert first["from_cache"] is False and second["from_cache"] is True
 
 
 def test_rate_limit_text_is_an_error_and_never_cached(gdelt, run_id):

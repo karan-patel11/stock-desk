@@ -80,3 +80,30 @@ def test_build_fails_on_braces_in_an_agent_file(tmp_path, monkeypatch):
     with pytest.raises(SystemExit) as err:
         build_template.build()
     assert "curly brace" in str(err.value)
+
+
+NEWS_CALL_AGENT = re.compile(r'tools/news\.py "COMPANY ([^"]*)" (--days \d+)')
+NEWS_CALL_WARM = re.compile(r'tools/news\.py "\$COMPANY ([^"]*)" (--days \d+)')
+
+
+def _one_news_call(text: str, pattern: re.Pattern, where: str) -> tuple[str, str]:
+    assert len(re.findall(r'tools/news\.py "', text)) == 1, f"{where}: expected exactly one news.py call"
+    found = pattern.findall(text)
+    assert len(found) == 1, f"{where}: news.py call does not have the COMPANY-first shape"
+    return found[0]
+
+
+def test_warm_demo_uses_the_sentiment_agents_exact_news_query():
+    """The demo cache is keyed on the exact query text, so the warm-up must match the agent verbatim."""
+    agent = _one_news_call((ROOT / "agents" / "sentiment.md").read_text(encoding="utf-8"), NEWS_CALL_AGENT,
+                           "agents/sentiment.md")
+    template = _one_news_call((ROOT / "switch" / "desk-team.template.yaml").read_text(encoding="utf-8"),
+                              NEWS_CALL_AGENT, "switch/desk-team.template.yaml")
+    warm = _one_news_call((ROOT / "scripts" / "warm_demo.sh").read_text(encoding="utf-8"), NEWS_CALL_WARM,
+                          "scripts/warm_demo.sh")
+    assert warm == agent == template, f"query drift: warm_demo.sh {warm} vs sentiment.md {agent} vs template {template}"
+
+
+def test_warm_demo_needs_ticker_and_company():
+    result = subprocess.run(["bash", str(ROOT / "scripts" / "warm_demo.sh")], capture_output=True, text=True)
+    assert result.returncode == 2 and "usage" in result.stderr

@@ -7,7 +7,8 @@ the average tone over the window, and the most repeated words in the titles.
 Honest limits, built in:
 - GDELT allows one request every 5 seconds, so requests are paced 6 seconds apart and cached for an hour
   (STOCKDESK_NEWS_CACHE_TTL overrides this; STOCKDESK_CACHE_TTL does not apply to news).
-  A 200 response whose body is a rate-limit message is never cached.
+  A 200 response whose body is a rate-limit message is never cached. data.from_cache is true only when
+  every GDELT response used came from the cache.
 - GDELT indexes roughly the last 3 months, so --days is capped at 90.
 - GDELT returns headlines only. Anyone citing what an article SAYS must open it first.
 - Average tone is a second request (timelinetone). If that request fails or has an unexpected
@@ -159,11 +160,13 @@ def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
                              "domain": article["domain"], "url": article["url"]})
 
     tone_row = None
+    from_cache = [articles_result.from_cache]
     try:
         tone_result = common.http_get(
             GDELT_URL, params={**base, "mode": "timelinetone"}, ttl=ttl,
             min_interval=GDELT_INTERVAL, attempts=GDELT_ATTEMPTS,
             rate_limit_wait=GDELT_RATE_LIMIT_WAIT, validate=_validate_body)
+        from_cache.append(tone_result.from_cache)
         mean_tone, points, first, last = parse_tone(tone_result.text)
         entry = common.write_evidence(
             run, tool="news.py", fact=f"Average news tone, query {query!r}, last {args.days} days",
@@ -197,6 +200,7 @@ def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
     data = {
         "query": query, "days": args.days, "retrieved_at": retrieved_at, "articles": article_rows,
         "average_tone": tone_row, "keywords": keywords_row, "unavailable": unavailable,
+        "from_cache": all(from_cache),  # true only if every GDELT response used came from the local cache
         "note": "GDELT returns headlines only. Open an article before citing what it says.",
     }
     return run, ids, data

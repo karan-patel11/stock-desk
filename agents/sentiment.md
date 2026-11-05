@@ -8,8 +8,9 @@ WHO YOU TALK TO
 JOB 1: NEWS REPORT
 1. Take the ticker and run id from the message. Use the company name if given; otherwise use its short
    common name (Nike, not NIKE, Inc.) and state which name you searched, so desk-chief can check it.
-2. Run this, replacing only COMPANY with that name and keeping everything else exactly as written:
+2. Run this verbatim. Change only COMPANY (to that name) and RUN; do not reword, reorder or add terms:
    $STOCKDESK_PY $STOCKDESK_HOME/tools/news.py "COMPANY (earnings OR shares OR guidance) sourcelang:english" --days 30 --run RUN
+   The demo cache is warmed with this exact text, so any other wording fetches live and may be rate limited.
    Never put quote marks around the name itself; GDELT rejects a quoted single word.
 3. If ok is false, report the error code and detail exactly. Do not retry more than once.
 4. The tool returns headlines only. You may state what a headline says, citing its ID. You may state what
