@@ -5,7 +5,8 @@ Recent headlines from the GDELT DOC 2.0 API: up to 20 articles (title, date, dom
 the average tone over the window, and the most repeated words in the titles.
 
 Honest limits, built in:
-- GDELT allows one request every 5 seconds, so requests are paced 6 seconds apart and cached for an hour.
+- GDELT allows one request every 5 seconds, so requests are paced 6 seconds apart and cached for an hour
+  (STOCKDESK_NEWS_CACHE_TTL overrides this; STOCKDESK_CACHE_TTL does not apply to news).
   A 200 response whose body is a rate-limit message is never cached.
 - GDELT indexes roughly the last 3 months, so --days is capped at 90.
 - GDELT returns headlines only. Anyone citing what an article SAYS must open it first.
@@ -16,6 +17,7 @@ Honest limits, built in:
 from __future__ import annotations
 
 import json
+import math
 import re
 import sys
 from collections import Counter
@@ -29,6 +31,7 @@ GDELT_INTERVAL = 6.0
 GDELT_ATTEMPTS = 4
 GDELT_RATE_LIMIT_WAIT = 15.0  # waits 15s, 30s, 45s between attempts when GDELT says slow down
 CACHE_TTL = 3600.0
+CACHE_TTL_ENV = "STOCKDESK_NEWS_CACHE_TTL"
 MAX_ARTICLES = 20
 SOURCE = "GDELT DOC 2.0"
 STOPWORDS = frozenset("""
@@ -37,6 +40,24 @@ from further have having here into just like more most much only other over said
 should some stock stocks such than that their them then there these they this those through under until
 very what when where which while will with would your inc corp company news today year years week
 """.split())
+
+
+def news_cache_ttl() -> float:
+    """Seconds a GDELT response stays cached: STOCKDESK_NEWS_CACHE_TTL, else one hour.
+
+    Kept apart from STOCKDESK_CACHE_TTL on purpose. On demo day, set it high (for example 86400)
+    and warm the cache with the sentiment agent's exact query. A bad value is an error, not ignored.
+    """
+    raw = common.env(CACHE_TTL_ENV)
+    if not raw:
+        return CACHE_TTL
+    try:
+        seconds = float(raw)
+    except ValueError:
+        seconds = math.nan
+    if not math.isfinite(seconds) or seconds <= 0:
+        raise ToolError("bad_input", f"{CACHE_TTL_ENV} must be a positive number of seconds, got {raw!r}")
+    return seconds
 
 
 def _validate_body(text: str) -> None:
@@ -110,12 +131,13 @@ def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
         raise ToolError("bad_input", "query must be 2-200 characters")
     if not 1 <= args.days <= 90:
         raise ToolError("bad_input", "--days must be between 1 and 90 (GDELT indexes about 3 months)")
+    ttl = news_cache_ttl()
     run = common.resolve_run(args.run)
 
     base = {"query": query, "format": "json", "timespan": f"{args.days}d"}
     articles_result = common.http_get(
         GDELT_URL, params={**base, "mode": "artlist", "maxrecords": MAX_ARTICLES, "sort": "datedesc"},
-        ttl=CACHE_TTL, min_interval=GDELT_INTERVAL, attempts=GDELT_ATTEMPTS,
+        ttl=ttl, min_interval=GDELT_INTERVAL, attempts=GDELT_ATTEMPTS,
         rate_limit_wait=GDELT_RATE_LIMIT_WAIT, validate=_validate_body)
     articles = parse_articles(articles_result.text)
     if not articles:
@@ -139,7 +161,7 @@ def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
     tone_row = None
     try:
         tone_result = common.http_get(
-            GDELT_URL, params={**base, "mode": "timelinetone"}, ttl=CACHE_TTL,
+            GDELT_URL, params={**base, "mode": "timelinetone"}, ttl=ttl,
             min_interval=GDELT_INTERVAL, attempts=GDELT_ATTEMPTS,
             rate_limit_wait=GDELT_RATE_LIMIT_WAIT, validate=_validate_body)
         mean_tone, points, first, last = parse_tone(tone_result.text)

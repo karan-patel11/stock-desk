@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import timedelta
 
 import pytest
 import requests
@@ -174,3 +175,46 @@ def test_network_down_is_source_unavailable(monkeypatch, run_id):
     with pytest.raises(ToolError) as err:
         news.main(["Acme Corp"])
     assert err.value.code == "source_unavailable"
+
+
+def _age_cache(home, seconds):
+    """Make every cached response look `seconds` old."""
+    stamp = common.utc_iso(common.utc_now() - timedelta(seconds=seconds))
+    for path in (home / "cache").glob("*.json"):
+        record = json.loads(path.read_text(encoding="utf-8"))
+        record["fetched_at"] = stamp
+        path.write_text(json.dumps(record), encoding="utf-8")
+
+
+def test_news_cache_ttl_default_override_and_global_ignored(gdelt, run_id, monkeypatch):
+    seen = []
+    real = common.http_get
+    monkeypatch.setattr(common, "http_get", lambda *a, **k: (seen.append(k["ttl"]), real(*a, **k))[1])
+    monkeypatch.setenv("STOCKDESK_CACHE_TTL", "5")       # the global setting must not reach news
+    news.main(["Acme Corp"])
+    monkeypatch.setenv("STOCKDESK_NEWS_CACHE_TTL", "86400")
+    news.main(["Acme Corp"])
+    assert seen == [3600.0, 3600.0, 86400.0, 86400.0]
+
+
+def test_long_news_ttl_serves_a_warm_cache_and_default_refetches(gdelt, run_id, monkeypatch, _isolated_home):
+    calls, _ = gdelt
+    news.main(["Acme Corp"])
+    warmed = len(calls)
+    _age_cache(_isolated_home, 2 * 3600)
+    monkeypatch.setenv("STOCKDESK_NEWS_CACHE_TTL", "86400")
+    _, _, data = news.main(["Acme Corp"])
+    assert len(calls) == warmed and data["articles"]      # served from the 2-hour-old cache
+    monkeypatch.delenv("STOCKDESK_NEWS_CACHE_TTL")
+    news.main(["Acme Corp"])
+    assert len(calls) > warmed                            # default one hour: fetched again
+
+
+@pytest.mark.parametrize("value", ["abc", "0", "-5", "nan", "inf"])
+def test_bad_news_cache_ttl_is_an_error_before_any_request(gdelt, run_id, monkeypatch, value):
+    calls, _ = gdelt
+    monkeypatch.setenv("STOCKDESK_NEWS_CACHE_TTL", value)
+    with pytest.raises(ToolError) as err:
+        news.main(["Acme Corp"])
+    assert err.value.code == "bad_input" and "STOCKDESK_NEWS_CACHE_TTL" in err.value.detail
+    assert calls == []

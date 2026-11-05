@@ -85,6 +85,21 @@ python tools/verify.py E12 --value 8.1%          # or --text-file report.txt to 
 python scripts/build_template.py [--check]
 ```
 
+## Demo day
+
+GDELT often rate limits for minutes at a time, and a refused call means a sentiment error in the thread. Warm the cache
+first:
+
+```bash
+# in .env: STOCKDESK_NEWS_CACHE_TTL=86400
+python tools/round.py start NKE                  # a throwaway run; the desk starts its own
+python tools/news.py "Nike (earnings OR shares OR guidance) sourcelang:english" --days 30
+```
+
+The cache only matches the exact query and `--days`, so use the string the sentiment agent will run
+(`agents/sentiment.md`, JOB 1 step 2, with the name it will choose). The evidence still records the original `retrieved_at`,
+so the age of the headlines stays visible. Clear the variable after the demo.
+
 ## Design decisions worth knowing
 
 - **Fail closed.** Missing data is an error or an entry in `data.unavailable`, never a guess. There is no stale-cache fallback
@@ -97,7 +112,9 @@ python scripts/build_template.py [--check]
   close N sessions after base. Excess return is stock minus sector ETF, both total-return adjusted. Fewer than 3 events sets
   `small_sample`. Every event needs a source URL that the sentiment agent actually opened.
 - **News** is headlines only (GDELT, roughly the last 3 months, one request per 5 seconds). The sentiment agent may only
-  describe an article it opened.
+  describe an article it opened. Responses are cached for an hour; `STOCKDESK_NEWS_CACHE_TTL` (seconds) overrides that,
+  and the global `STOCKDESK_CACHE_TTL` does not apply to news. There is still no stale fallback: an expired entry is
+  fetched again, and if GDELT refuses, the tool returns an error.
 - `config/peers.json` and `config/sector_etf.json` are small curated lists for demo tickers. An unmapped ticker needs `--etf`.
   Review them before relying on them.
 
