@@ -41,6 +41,9 @@ METRICS = [
     ("eps_diluted", "Diluted EPS", "USD/share", "USD/shares", "flow_nonadditive", ["EarningsPerShareDiluted"]),
     ("total_debt", "Total debt", "USD", "USD", "instant", ["LongTermDebt", "DebtLongtermAndShorttermCombinedAmount"]),
 ]
+# When no combined debt tag exists for a balance-sheet date, total debt is derived as the sum of these
+# two instants (filers such as Nike tag LongTermDebt only in the 10-K but split it every quarter).
+DEBT_PARTS = ("LongTermDebtCurrent", "LongTermDebtNoncurrent")
 GROWTH_KEYS = ("revenue", "gross_profit", "operating_income", "net_income", "eps_diluted")
 MARGINS = (("gross_margin", "Gross margin", "gross_profit"),
            ("operating_margin", "Operating margin", "operating_income"),
@@ -251,8 +254,13 @@ def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
     # ---- quarterly facts ----
     collected: dict[str, dict[str, Period]] = {}
     tags_used: dict[str, list[str]] = {}
+    debt_parts = {tag: instant_periods(extract_facts(us_gaap, tag, "USD")) for tag in DEBT_PARTS}
     for key, label, _unit, sec_unit, kind, tags in METRICS:
         periods, used = collect_metric(us_gaap, tags, sec_unit, kind)
+        if not periods and key == "total_debt" and all(debt_parts.values()):
+            collected[key] = {}  # every date falls back to the derived sum below
+            tags_used[key] = list(DEBT_PARTS)
+            continue
         if not periods:
             unavailable.append({"metric": key, "reason": f"no us-gaap tag with {sec_unit} 10-Q/10-K facts among {', '.join(tags)}"})
             continue
@@ -285,6 +293,23 @@ def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
             if periods is None:
                 continue
             period = periods.get(end)
+            if period is None and key == "total_debt" and all(end in p for p in debt_parts.values()):
+                parts = [debt_parts[tag][end] for tag in DEBT_PARTS]
+                part_ids = [record(f"{tag}, {ticker} at {end}", part.val, unit, end,
+                                   f"SEC EDGAR companyfacts, {part.form}", facts_url, f"us-gaap:{tag}, accn {part.accn}")
+                            for tag, part in zip(DEBT_PARTS, parts)]
+                total = sum(part.val for part in parts)
+                tags_used.setdefault(key, [])
+                tags_used[key] += [tag for tag in DEBT_PARTS if tag not in tags_used[key]]
+                evidence_id = record(
+                    f"{label}, {ticker} at {end} (derived: current + noncurrent long-term debt)", total, unit, end,
+                    "SEC EDGAR companyfacts (derived)", facts_url, " + ".join(f"us-gaap:{tag}" for tag in DEBT_PARTS),
+                    derived_from=part_ids)
+                raw_ids[(key, end)] = evidence_id
+                raw_values[(key, end)] = total
+                quarter_rows[end]["metrics"][key] = {"id": evidence_id, "value": total, "derived_q4": False,
+                                                     "derived_from_parts": list(DEBT_PARTS)}
+                continue
             if period is None:
                 reason = "Q4 EPS is not derivable (EPS is not additive)" if key == "eps_diluted" else "no value for this period"
                 unavailable.append({"metric": f"{key}@{end}", "reason": reason})

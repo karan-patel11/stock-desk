@@ -443,7 +443,17 @@ def http_get(
         if status == 200:
             text = response.text
             if validate is not None:
-                validate(text)
+                try:
+                    validate(text)
+                except ToolError as ve:
+                    if ve.code == "rate_limited":
+                        last_problem = f"body indicates rate limit: {ve.detail}"
+                        if attempt < attempts:
+                            # A rejected request seems to restart GDELT's penalty window, so back off linearly.
+                            _sleep(rate_limit_wait * attempt)
+                            continue
+                        raise ToolError("rate_limited", f"{host}: still rate limited after {attempts} attempts") from ve
+                    raise
             fetched_at = cache_put(key, text)
             return HttpResult(text, fetched_at, False, full_url)
         if status == 404:

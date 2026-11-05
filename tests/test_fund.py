@@ -166,6 +166,39 @@ def test_missing_gross_profit_tag_is_reported_not_guessed(sec, run_id):
     assert latest["margins"]["operating_margin"]["value"] == pytest.approx(0.11)
 
 
+def _split_debt(facts, drop_current_at=None):
+    """Nike-style filer: LongTermDebt only at fiscal year end, current + noncurrent every quarter."""
+    g = facts["facts"]["us-gaap"]
+    items = g["LongTermDebt"]["units"]["USD"]
+    current = [dict(i, val=100_000_000) for i in items if i["end"] != drop_current_at]
+    noncurrent = [dict(i, val=i["val"] - 100_000_000) for i in items]
+    g["LongTermDebtCurrent"] = {"units": {"USD": current}}
+    g["LongTermDebtNoncurrent"] = {"units": {"USD": noncurrent}}
+    g["LongTermDebt"]["units"]["USD"] = [i for i in items if i["form"] == "10-K"]
+
+
+def test_total_debt_falls_back_to_current_plus_noncurrent(sec, run_id):
+    _, install = sec
+    install(_split_debt)
+    _, _, data = run_fund(run_id)
+    latest = row(data, "2026-08-31")["metrics"]["total_debt"]
+    assert latest["value"] == 560_000_000 and latest["derived_from_parts"]
+    stored = common.read_evidence(run_id, latest["id"])
+    assert len(stored["derived_from"]) == 2
+    parts = [common.read_evidence(run_id, i)["value"] for i in stored["derived_from"]]
+    assert sum(parts) == 560_000_000
+    assert "LongTermDebtNoncurrent" in data["tags_used"]["total_debt"]
+    assert not any(u["metric"].startswith("total_debt") for u in data["unavailable"])
+
+
+def test_total_debt_stays_unavailable_when_a_part_is_missing(sec, run_id):
+    _, install = sec
+    install(lambda facts: _split_debt(facts, drop_current_at="2026-08-31"))
+    _, _, data = run_fund(run_id)
+    assert "total_debt" not in row(data, "2026-08-31")["metrics"]
+    assert {"metric": "total_debt@2026-08-31", "reason": "no value for this period"} in data["unavailable"]
+
+
 def test_non_positive_prior_value_makes_growth_undefined(sec, run_id):
     _, install = sec
 

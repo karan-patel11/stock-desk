@@ -159,13 +159,41 @@ def test_http_404_is_no_data_and_network_error_is_source_unavailable(monkeypatch
 
 def test_validate_failure_is_not_cached(monkeypatch):
     def validate(text):
-        raise ToolError("rate_limited", "body says slow down")
+        if text == "Please limit requests":
+            raise ToolError("rate_limited", "body says slow down")
 
-    install_get(monkeypatch, [FakeResponse(200, "Please limit requests")])
+    # 3 attempts all return a rate-limit body; retries exhaust
+    install_get(monkeypatch, [FakeResponse(200, "Please limit requests")] * 3)
     with pytest.raises(ToolError):
         common.http_get("https://x.test/f", validate=validate)
+    # Next call gets a clean response; the rate-limit body was never cached
     calls = install_get(monkeypatch, [FakeResponse(200, "fine")])
     assert common.http_get("https://x.test/f").text == "fine"
+    assert len(calls) == 1
+
+
+def test_rate_limit_body_is_retried_then_succeeds(monkeypatch):
+    def validate(text):
+        if text == "Please limit requests":
+            raise ToolError("rate_limited", "body says slow down")
+
+    slept = []
+    monkeypatch.setattr(common, "_sleep", slept.append)
+    calls = install_get(monkeypatch, [FakeResponse(200, "Please limit requests"), FakeResponse(200, "fine")])
+    result = common.http_get("https://x.test/r", validate=validate, rate_limit_wait=7.0)
+    assert result.text == "fine"
+    assert len(calls) == 2
+    assert slept.count(7.0) == 1  # first retry waits rate_limit_wait * 1
+
+
+def test_non_rate_limit_validate_error_is_not_retried(monkeypatch):
+    def validate(text):
+        raise ToolError("no_data", "body is empty")
+
+    calls = install_get(monkeypatch, [FakeResponse(200, "")])
+    with pytest.raises(ToolError) as err:
+        common.http_get("https://x.test/n", validate=validate)
+    assert err.value.code == "no_data"
     assert len(calls) == 1
 
 

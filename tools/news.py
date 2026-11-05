@@ -26,6 +26,8 @@ from common import ToolError
 
 GDELT_URL = "https://api.gdeltproject.org/api/v2/doc/doc"
 GDELT_INTERVAL = 6.0
+GDELT_ATTEMPTS = 4
+GDELT_RATE_LIMIT_WAIT = 15.0  # waits 15s, 30s, 45s between attempts when GDELT says slow down
 CACHE_TTL = 3600.0
 MAX_ARTICLES = 20
 SOURCE = "GDELT DOC 2.0"
@@ -113,7 +115,8 @@ def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
     base = {"query": query, "format": "json", "timespan": f"{args.days}d"}
     articles_result = common.http_get(
         GDELT_URL, params={**base, "mode": "artlist", "maxrecords": MAX_ARTICLES, "sort": "datedesc"},
-        ttl=CACHE_TTL, min_interval=GDELT_INTERVAL, validate=_validate_body)
+        ttl=CACHE_TTL, min_interval=GDELT_INTERVAL, attempts=GDELT_ATTEMPTS,
+        rate_limit_wait=GDELT_RATE_LIMIT_WAIT, validate=_validate_body)
     articles = parse_articles(articles_result.text)
     if not articles:
         raise ToolError("no_data", f"GDELT returned no articles for {query!r} in the last {args.days} days")
@@ -137,7 +140,8 @@ def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
     try:
         tone_result = common.http_get(
             GDELT_URL, params={**base, "mode": "timelinetone"}, ttl=CACHE_TTL,
-            min_interval=GDELT_INTERVAL, validate=_validate_body)
+            min_interval=GDELT_INTERVAL, attempts=GDELT_ATTEMPTS,
+            rate_limit_wait=GDELT_RATE_LIMIT_WAIT, validate=_validate_body)
         mean_tone, points, first, last = parse_tone(tone_result.text)
         entry = common.write_evidence(
             run, tool="news.py", fact=f"Average news tone, query {query!r}, last {args.days} days",
