@@ -37,7 +37,8 @@ echo "$OUT" | "$PY" -c '
 import json, sys
 d = json.loads(sys.stdin.read())
 if not d.get("ok"):
-    print("FAIL %s: %s (wait a few minutes; GDELT blocks for a while after refusals)" % (d.get("error"), d.get("detail"))); sys.exit(1)
+    hint = " (wait a few minutes; GDELT blocks for a while after refusals)" if d.get("error") == "rate_limited" else ""
+    print("FAIL %s: %s%s" % (d.get("error"), d.get("detail"), hint)); sys.exit(1)
 data = d["data"]
 print("ok  query=%r  articles=%d  retrieved_at=%s  from_cache=%s" % (
     data["query"], len(data["articles"]), data["retrieved_at"], data["from_cache"]))
