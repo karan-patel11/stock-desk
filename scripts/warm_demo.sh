@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
 # Warms the news cache for a demo with the exact query the sentiment agent runs (agents/sentiment.md, JOB 1 step 2).
 # Usage: scripts/warm_demo.sh TICKER "Company"      for example: scripts/warm_demo.sh NKE Nike
-# "Company" must be the name the agent will use, spelled and capitalized the same way: the cache matches exact text.
+# Company must be the name the sentiment agent searches (agents/sentiment.md, JOB 1 step 1): the common brand name
+# with no corporate suffix (Inc, Corp, Ltd, Co), capitalized as normally written, for example Nike, Apple, Microsoft.
+# The cache matches exact text, so "Nike Inc" or NIKE would warm an entry the agent never reads.
 # Set STOCKDESK_NEWS_CACHE_TTL (for example 86400 in .env) first, or the warm cache lasts one hour.
 # tests/test_agents_and_template.py fails if the news.py line below and the one in agents/sentiment.md differ.
 set -u
 cd "$(dirname "$0")/.."
 if [ $# -ne 2 ] || [ -z "$1" ] || [ -z "$2" ]; then
-  echo "usage: scripts/warm_demo.sh TICKER \"Company\"" >&2; exit 2
+  cat >&2 <<'USAGE'
+usage: scripts/warm_demo.sh TICKER "Company"      for example: scripts/warm_demo.sh NKE Nike
+Company must be the common brand name with no corporate suffix (Inc, Corp, Ltd, Co), capitalized as
+normally written (Nike, Apple, Microsoft): the same name the sentiment agent searches.
+USAGE
+  exit 2
 fi
 TICKER="$1"
 COMPANY="$2"

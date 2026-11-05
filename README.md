@@ -92,13 +92,17 @@ first:
 
 ```bash
 # in .env: STOCKDESK_NEWS_CACHE_TTL=86400
-python tools/round.py start NKE                  # a throwaway run; the desk starts its own
-python tools/news.py "Nike (earnings OR shares OR guidance) sourcelang:english" --days 30
+scripts/warm_demo.sh NKE Nike
 ```
 
-The cache only matches the exact query and `--days`, so use the string the sentiment agent will run
-(`agents/sentiment.md`, JOB 1 step 2, with the name it will choose). The evidence still records the original `retrieved_at`,
-so the age of the headlines stays visible. Clear the variable after the demo.
+`warm_demo.sh` starts a throwaway run (the desk starts its own) and runs the sentiment agent's exact `news.py` query,
+always fetching fresh; a test fails if the script and `agents/sentiment.md` differ. **The Company argument must be the
+brand name in the form the agent searches:** the common brand name with no corporate suffix (Inc, Corp, Ltd, Co),
+capitalized as normally written, for example Nike, Apple, Microsoft. The cache matches exact text, so `"Nike Inc"` or
+`NIKE` would warm an entry the agent never reads. If you give the desk a company name yourself, write it the same way:
+the agent searches a given name as written. If GDELT refuses, the script exits 1 and leaves the cache as it was; wait a
+few minutes and run it again. The evidence still records the original `retrieved_at`, so the age of the headlines stays
+visible. Clear the variable after the demo.
 
 ## Design decisions worth knowing
 
@@ -131,7 +135,7 @@ agents/            instruction files, source of truth for the 4 agents (max 60 l
 switch/            desk-team.skeleton -> desk-team.template.yaml (generated), mention-test.template.yaml
 tools/             common fund tech news precedent verify round
 config/            peers.json sector_etf.json
-scripts/           build_template.py smoke_live.sh
+scripts/           build_template.py smoke_live.sh warm_demo.sh
 tests/             offline tests and synthetic fixtures
 evidence/ cache/   generated, gitignored
 ```
