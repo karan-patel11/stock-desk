@@ -36,10 +36,31 @@ SEC), E94 (4.066351), E69 (0.019014), E153, E164 to E167. All match what the age
 - The run took about seven minutes (18:00 to 18:07 EST).
 - No token or secret was entered in chat, written to a file, or committed.
 
+## Second run: memory of an earlier verdict
+
+Same room (`#desk-nke`), 2026-11-05 19:14 to 19:19 EST (2026-11-06 00:14 to 00:19 UTC), run `r-20261106-01`.
+Triggered by the user posting `@desk-chief analyze NKE` in the channel.
+
+| Check | Result | Evidence |
+|---|---|---|
+| desk-chief finds the earlier verdict | PASS | Opening message quoted the 2026-11-05 verdict line and named `verdict-NKE-2026-11-05`; the first run had said "No earlier verdict for NKE" |
+| New run has its own ledger | PASS | `evidence/r-20261106-01/` exists, 167 entries; `round.py status`: ended, round 2 of 2 |
+| Same shape as run 1 | PASS | Round 1 reports verified, round 2 follow-ups, verdict `Neutral/wait, low`, 4 precedent events |
+| Second verdict saved as a room document | NOT CHECKED | desk-chief says `verdict-NKE-2026-11-06`; `!list-documents` was not run after this run, so this is the agent's statement only |
+
+Notes:
+
+- Prices, filings and precedent figures were cache hits, so their `retrieved_at` is still 2026-11-05 (22:46Z and
+  23:07Z); the news evidence (E134) was fetched fresh at 2026-11-06 00:16Z. The chief said so in the thread.
+- Sentiment opened two Nike articles this time (E133, E117), both read as caution; the verdict now cites them.
+- The chief edited the saved 2026-11-06 verdict at 19:19 EST to fix a source-URL typo, after announcing the run closed.
+  No figure changed.
+- Evidence IDs (for example E114 to E135, E164) repeat across the two runs. Each run has its own ledger, so quote the
+  run id with an evidence id.
+
 ## Still not tested
 
 - A second ticker in the same Switch server (the desk agents already exist; `allow_existing` is unverified).
 - Someone other than the owner mentioning the agents (`addressing: owner-agents`).
 - A human interrupt mid-run, and the `pause` / `verdict now` commands.
-- Memory of an earlier verdict: this run said "No earlier verdict for NKE". A second NKE run in this room should
-  find `verdict-NKE-2026-11-05`.
+- `!list-documents` after the second run (should list desk-rules and both verdicts).
