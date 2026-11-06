@@ -219,3 +219,31 @@ def test_bad_news_cache_ttl_is_an_error_before_any_request(gdelt, run_id, monkey
         news.main(["Acme Corp"])
     assert err.value.code == "bad_input" and "STOCKDESK_NEWS_CACHE_TTL" in err.value.detail
     assert calls == []
+
+
+def test_http_429_is_rate_limited_without_retry(gdelt, run_id):
+    calls, state = gdelt
+    state["articles_status"] = 429
+    with pytest.raises(ToolError) as err:
+        news.main(["Acme Corp"])
+    assert err.value.code == "rate_limited"
+    assert len(calls) == 1  # every refused request restarts GDELT's block, so it is never retried
+
+
+def test_rate_limit_body_is_not_retried(gdelt, run_id):
+    calls, state = gdelt
+    state["articles"] = RATE_TEXT
+    with pytest.raises(ToolError):
+        news.main(["Acme Corp"])
+    assert len(calls) == 1
+
+
+def test_pacing_holds_across_processes(gdelt, run_id, monkeypatch):
+    """A second tool process (simulated: in-process memory cleared) still waits for the first one's request."""
+    news.main(["Acme Corp"])
+    common._last_request.clear()
+    waits = []
+    monkeypatch.setattr(common, "_sleep", waits.append)
+    news.main(["Other Query"])
+    assert waits and all(0 < w <= news.GDELT_INTERVAL for w in waits)
+    assert news.GDELT_INTERVAL >= 5.5

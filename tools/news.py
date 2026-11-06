@@ -5,8 +5,10 @@ Recent headlines from the GDELT DOC 2.0 API: up to 20 articles (title, date, dom
 the average tone over the window, and the most repeated words in the titles.
 
 Honest limits, built in:
-- GDELT allows one request every 5 seconds, so requests are paced 6 seconds apart and cached for an hour
-  (STOCKDESK_NEWS_CACHE_TTL overrides this; STOCKDESK_CACHE_TTL does not apply to news).
+- GDELT allows one request every 5 seconds, so requests are paced 6 seconds apart (across processes, via a
+  locked timestamp file in cache/pace/) and cached for an hour (STOCKDESK_NEWS_CACHE_TTL overrides this;
+  STOCKDESK_CACHE_TTL does not apply to news). HTTP 429 or a rate-limit body returns rate_limited at once,
+  without retrying: every refused request restarts GDELT's block.
   A 200 response whose body is a rate-limit message is never cached. data.from_cache is true only when
   every GDELT response used came from the cache.
 - GDELT indexes roughly the last 3 months, so --days is capped at 90.
@@ -28,9 +30,9 @@ import common
 from common import ToolError
 
 GDELT_URL = "https://api.gdeltproject.org/api/v2/doc/doc"
-GDELT_INTERVAL = 6.0
-GDELT_ATTEMPTS = 4
-GDELT_RATE_LIMIT_WAIT = 15.0  # waits 15s, 30s, 45s between attempts when GDELT says slow down
+GDELT_INTERVAL = 6.0  # GDELT allows 1 request per 5 s; at least 5.5 s is required, kept across processes
+GDELT_ATTEMPTS = 3     # retries cover network and 5xx errors only; a rate limit fails at once
+GDELT_RATE_LIMIT_WAIT = 15.0
 CACHE_TTL = 3600.0
 CACHE_TTL_ENV = "STOCKDESK_NEWS_CACHE_TTL"
 MAX_ARTICLES = 20
@@ -139,7 +141,7 @@ def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
     articles_result = common.http_get(
         GDELT_URL, params={**base, "mode": "artlist", "maxrecords": MAX_ARTICLES, "sort": "datedesc"},
         ttl=ttl, min_interval=GDELT_INTERVAL, attempts=GDELT_ATTEMPTS,
-        rate_limit_wait=GDELT_RATE_LIMIT_WAIT, validate=_validate_body)
+        rate_limit_wait=GDELT_RATE_LIMIT_WAIT, retry_rate_limited=False, validate=_validate_body)
     articles = parse_articles(articles_result.text)
     if not articles:
         raise ToolError("no_data", f"GDELT returned no articles for {query!r} in the last {args.days} days")
@@ -165,7 +167,7 @@ def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
         tone_result = common.http_get(
             GDELT_URL, params={**base, "mode": "timelinetone"}, ttl=ttl,
             min_interval=GDELT_INTERVAL, attempts=GDELT_ATTEMPTS,
-            rate_limit_wait=GDELT_RATE_LIMIT_WAIT, validate=_validate_body)
+            rate_limit_wait=GDELT_RATE_LIMIT_WAIT, retry_rate_limited=False, validate=_validate_body)
         from_cache.append(tone_result.from_cache)
         mean_tone, points, first, last = parse_tone(tone_result.text)
         entry = common.write_evidence(

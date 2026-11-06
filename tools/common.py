@@ -25,6 +25,11 @@ from urllib.parse import urlencode, urlparse
 
 import requests
 
+try:  # POSIX file locks keep request pacing correct across separate tool processes
+    import fcntl
+except ImportError:  # pragma: no cover - Windows: pacing falls back to this process only
+    fcntl = None  # type: ignore[assignment]
+
 ERROR_CODES = ("no_data", "source_unavailable", "bad_input", "rate_limited")
 EVIDENCE_FIELDS = (
     "id", "run", "tool", "fact", "value", "unit", "period",
@@ -391,14 +396,52 @@ class HttpResult:
 
 
 def _pace(host: str, interval: float) -> None:
+    """Wait until `interval` seconds have passed since the last request to `host`.
+
+    The last request time is kept in cache/pace/<host> under a file lock, so two tool processes started
+    back to back (for example two news.py calls) are spaced too, not only requests inside one process.
+    """
     if interval <= 0:
         return
-    last = _last_request.get(host)
-    if last is not None:
-        wait = interval - (time.monotonic() - last)
-        if wait > 0:
-            _sleep(wait)
-    _last_request[host] = time.monotonic()
+    pace_dir = cache_root() / "pace"
+    try:
+        pace_dir.mkdir(parents=True, exist_ok=True)
+        handle = open(pace_dir / re.sub(r"[^A-Za-z0-9.\-]", "_", host), "a+", encoding="utf-8")
+    except OSError:
+        handle = None
+    if handle is None or fcntl is None:
+        if handle is not None:
+            handle.close()
+        last = _last_request.get(host)
+        if last is not None:
+            wait = interval - (time.time() - last)
+            if wait > 0:
+                _sleep(wait)
+        _last_request[host] = time.time()
+        return
+    with handle:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        try:
+            handle.seek(0)
+            try:
+                last = float(handle.read().strip() or "nan")
+            except ValueError:
+                last = math.nan
+            in_process = _last_request.get(host)
+            if in_process is not None and not (last >= in_process):
+                last = in_process
+            if math.isfinite(last):
+                wait = interval - (time.time() - last)
+                if wait > 0:
+                    _sleep(min(wait, interval))
+            now = time.time()
+            _last_request[host] = now
+            handle.seek(0)
+            handle.truncate()
+            handle.write(repr(now))
+            handle.flush()
+        finally:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
 def http_get(
@@ -411,12 +454,15 @@ def http_get(
     attempts: int = 3,
     timeout: float = 30.0,
     rate_limit_wait: float = 10.0,
+    retry_rate_limited: bool = True,
     validate: Callable[[str], None] | None = None,
 ) -> HttpResult:
     """GET with disk cache, host pacing and retries. Fails closed: no stale fallback.
 
     `validate` runs on the body before it is cached, so a 200 that actually carries an
     error message (GDELT does this) is never cached.
+    With retry_rate_limited=False an HTTP 429 (or a body the validator flags as a rate limit) fails at once
+    with rate_limited: GDELT restarts its block on every refused request, so retrying only makes it longer.
     """
     full_url = url
     if params:
@@ -448,6 +494,8 @@ def http_get(
                 except ToolError as ve:
                     if ve.code == "rate_limited":
                         last_problem = f"body indicates rate limit: {ve.detail}"
+                        if not retry_rate_limited:
+                            raise ToolError("rate_limited", f"{host}: {ve.detail}; not retried") from ve
                         if attempt < attempts:
                             # A rejected request seems to restart GDELT's penalty window, so back off linearly.
                             _sleep(rate_limit_wait * attempt)
@@ -460,6 +508,8 @@ def http_get(
             raise ToolError("no_data", f"{host}: not found (404) for {full_url}")
         if status == 429:
             last_problem = "429 too many requests"
+            if not retry_rate_limited:
+                raise ToolError("rate_limited", f"{host}: HTTP 429 too many requests; not retried")
             if attempt < attempts:
                 retry_after = response.headers.get("Retry-After", "")
                 try:
