@@ -134,6 +134,48 @@ code, .mono { font-family: var(--mono); font-size: .9em; }
 .sw .k { font-family: var(--mono); font-size: 12px; color: var(--brass); }
 @media (max-width: 900px) { .sw { grid-template-columns: 1fr; } }
 
+/* one chat: lane diagram */
+.seq-wrap { margin-top: 40px; overflow-x: auto; border: 1px solid var(--line-light); border-radius: 18px; background: #fff; }
+.seq { position: relative; min-width: 920px; padding: 0 0 18px; }
+.lanes, .life { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.lanes { position: sticky; top: 0; z-index: 2; background: #fff; border-bottom: 1px solid var(--line-light); padding: 34px 0 14px; }
+.lane { display: grid; justify-items: center; gap: 6px; text-align: center; }
+.lane svg { width: 40px; height: 40px; }
+.lane b { font-size: 13px; font-weight: 600; }
+.lane small { font-size: 11.5px; color: var(--ink-soft); }
+.life { position: absolute; inset: 0; pointer-events: none; }
+.life div { position: relative; }
+.life div::before { content: ""; position: absolute; left: 50%; top: 96px; bottom: 0; border-left: 1px dashed rgba(13,18,15,.18); }
+.life .room { background: rgba(78,120,98,.06); }
+.life .host { background: rgba(200,176,122,.08); }
+.zone { position: absolute; z-index: 3; top: 10px; font: 500 10.5px var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); }
+.zone.z1 { left: 12px; } .zone.z2 { right: 12px; color: var(--brass-ink); }
+.rows { position: relative; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); row-gap: 4px; padding-top: 8px; }
+.phase { grid-column: 1 / -1; margin: 14px 16px 2px; font: 500 11px var(--body); letter-spacing: .14em; text-transform: uppercase; color: var(--brass-ink); display: flex; align-items: center; gap: 10px; }
+.phase::after { content: ""; flex: 1; border-top: 1px solid var(--line-light); }
+.arr { --span: 2; position: relative; min-height: 62px; padding-top: 2px; }
+.arr .ln { position: absolute; top: 30px; z-index: 1; left: calc(100% / var(--span) / 2); right: calc(100% / var(--span) / 2); height: 0; border-top: 2px solid #2f5a45; }
+.arr.tool .ln { border-top-color: var(--brass-ink); }
+.arr.loop .ln { border-top-style: dashed; border-top-color: #9a4f2e; }
+.arr .ln::after { content: ""; position: absolute; top: -6px; width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
+.arr.r .ln::after { right: -2px; border-left: 8px solid #2f5a45; }
+.arr.l .ln::after { left: -2px; border-right: 8px solid #2f5a45; }
+.arr.tool.r .ln::after { border-left-color: var(--brass-ink); } .arr.tool.l .ln::after { border-right-color: var(--brass-ink); }
+.arr.loop.r .ln::after { border-left-color: #9a4f2e; } .arr.loop.l .ln::after { border-right-color: #9a4f2e; }
+.arr .ln::before { content: ""; position: absolute; top: -4px; width: 6px; height: 6px; border-radius: 50%; background: inherit; }
+.arr.r .ln::before { left: -3px; background: #2f5a45; } .arr.l .ln::before { right: -3px; background: #2f5a45; }
+.arr.tool .ln::before { background: var(--brass-ink); } .arr.loop .ln::before { background: #9a4f2e; }
+.arr .lab { position: absolute; left: 8px; right: 8px; bottom: calc(100% - 26px); text-align: center; font-size: 13px; line-height: 1.3; color: var(--ink); }
+.arr .lab code { font-size: 12px; }
+.arr .sub { position: absolute; left: 8px; right: 8px; top: 36px; text-align: center; font-size: 11.5px; line-height: 1.3; color: var(--ink-soft); }
+.arr .dots { position: absolute; top: 26px; left: calc(100% / var(--span) / 2); right: calc(100% / var(--span) / 2); display: flex; justify-content: space-between; pointer-events: none; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 16px; font-size: 13px; color: var(--ink-soft); }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.legend i { display: inline-block; width: 26px; border-top: 2px solid #2f5a45; }
+.legend i.t { border-top-color: var(--brass-ink); } .legend i.d { border-top: 2px dashed #9a4f2e; }
+.av svg { width: 32px; height: 32px; }
+.av:has(svg) { background: transparent; }
+
 /* stats */
 .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line-dark); border: 1px solid var(--line-dark); border-radius: 16px; overflow: hidden; margin-top: 48px; }
 .stat { background: var(--night); padding: 24px; display: grid; gap: 4px; }
@@ -225,11 +267,22 @@ footer p { color: var(--mist-soft); font-size: 14px; }
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-chief" viewBox="0 0 40 40"><path d="M20 5 L36 34 H4 Z" fill="#8fcf9a" stroke="#8fcf9a" stroke-width="3" stroke-linejoin="round"/><path d="M13.5 26 q2.5 -2.5 5 0 M21.5 26 q2.5 -2.5 5 0" stroke="#1d3a26" stroke-width="1.7" fill="none" stroke-linecap="round"/></symbol>
+    <symbol id="i-fund" viewBox="0 0 40 40"><ellipse cx="20" cy="21" rx="13" ry="15" fill="#b9e0a8"/><circle cx="15" cy="21" r="1.9" fill="#1d3a26"/><circle cx="25" cy="21" r="1.9" fill="#1d3a26"/></symbol>
+    <symbol id="i-tech" viewBox="0 0 40 40"><rect x="5" y="6" width="30" height="28" rx="7" fill="#f2b27a"/><rect x="9" y="16" width="22" height="9" rx="4.5" fill="#5a3418"/><circle cx="15.5" cy="20.5" r="1.9" fill="#f2b27a"/><circle cx="24.5" cy="20.5" r="1.9" fill="#f2b27a"/></symbol>
+    <symbol id="i-sent" viewBox="0 0 40 40"><rect x="3" y="11" width="34" height="19" rx="9.5" fill="#c7b4f0"/><rect x="9" y="16.5" width="22" height="8" rx="4" fill="#3b2a63"/><circle cx="15.5" cy="20.5" r="1.8" fill="#c7b4f0"/><circle cx="24.5" cy="20.5" r="1.8" fill="#c7b4f0"/></symbol>
+    <symbol id="i-you" viewBox="0 0 40 40"><circle cx="20" cy="14" r="7" fill="#2b3a33"/><path d="M7 35 a13 11 0 0 1 26 0 Z" fill="#2b3a33"/></symbol>
+    <symbol id="i-ledger" viewBox="0 0 40 40"><g fill="none" stroke="#7a6331" stroke-width="2.2"><ellipse cx="20" cy="10" rx="13" ry="5"/><path d="M7 10 v20 a13 5 0 0 0 26 0 v-20"/><path d="M7 20 a13 5 0 0 0 26 0"/></g></symbol>
+  </defs>
+</svg>
 <header class="nav">
   <div class="wrap">
     <a class="brand" href="#top">Stock Desk</a>
     <nav class="pills" aria-label="Sections">
       <a href="#how">How it works</a>
+      <a href="#chat">One chat</a>
       <a href="#run">A real run</a>
       <a href="#guardrails">Guardrails</a>
       <a href="#switch">Why Switch</a>
@@ -331,6 +384,57 @@ footer p { color: var(--mist-soft); font-size: 14px; }
   </div>
 </section>
 
+<section class="band light" id="chat" style="padding-top:0">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">One chat, start to end</p>
+      <h2>Seven minutes, eighteen steps,<br><span class="dim">one thread.</span></h2>
+      <p class="lede">Every message between people and agents crosses the Switch room. Every number is made by a tool on the host machine and lands in the ledger first. Scroll sideways on a phone.</p>
+    </div>
+    <div class="seq-wrap" role="img" aria-label="Sequence of one Stock Desk run, from the first mention to the saved verdict">
+      <div class="seq">
+        <div class="life"><div class="room"></div><div class="room"></div><div class="room"></div><div class="room"></div><div class="room"></div><div class="host"></div></div>
+        <span class="zone z1">Switch room · #desk-nke thread</span><span class="zone z2">On the host machine</span>
+        <div class="lanes">
+          <div class="lane"><svg aria-hidden="true"><use href="#i-you"/></svg><b>You</b><small>in Slack</small></div>
+          <div class="lane"><svg aria-hidden="true"><use href="#i-chief"/></svg><b>desk-chief</b><small>runs the desk</small></div>
+          <div class="lane"><svg aria-hidden="true"><use href="#i-fund"/></svg><b>desk-fundamental</b><small>SEC filings</small></div>
+          <div class="lane"><svg aria-hidden="true"><use href="#i-tech"/></svg><b>desk-technical</b><small>prices</small></div>
+          <div class="lane"><svg aria-hidden="true"><use href="#i-sent"/></svg><b>desk-sentiment</b><small>news, precedents</small></div>
+          <div class="lane"><svg aria-hidden="true"><use href="#i-ledger"/></svg><b>Evidence ledger</b><small>Python tools</small></div>
+        </div>
+        <div class="rows">
+      <div class="phase">1 · Start</div>
+      <div class="arr r " style="grid-column:1 / 3; --span:2"><span class="lab"><code>@desk-chief analyze NKE</code></span><span class="ln"></span><span class="sub">Switch routes the mention to desk-chief</span></div>
+      <div class="arr r tool" style="grid-column:2 / 7; --span:5"><span class="lab"><code>round.py start NKE</code></span><span class="ln"></span><span class="sub">opens run r-20261107-05</span></div>
+      <div class="arr l " style="grid-column:1 / 3; --span:2"><span class="lab">Quotes the last saved verdict, asks your goal</span><span class="ln"></span><span class="sub">1 short · 2 medium · 3 long · all</span></div>
+      <div class="arr r " style="grid-column:1 / 3; --span:2"><span class="lab"><code>@desk-chief 2</code></span><span class="ln"></span><span class="sub">goal: medium term (3–6 months)</span></div>
+      <div class="phase">2 · Round 1: scoped briefs</div>
+      <div class="arr r " style="grid-column:2 / 6; --span:4"><span class="lab">One message, three mentions, one scope line each</span><span class="ln"></span><span class="sub">@desk-fundamental · @desk-technical · @desk-sentiment</span></div>
+      <div class="arr r tool" style="grid-column:3 / 7; --span:4"><span class="lab"><code>fund.py NKE --quarters 12</code></span><span class="ln"></span><span class="sub">164 SEC facts, tier T1</span></div>
+      <div class="arr r tool" style="grid-column:4 / 7; --span:3"><span class="lab"><code>tech.py NKE --lookback 2y</code></span><span class="ln"></span><span class="sub">11 price facts, tier T2</span></div>
+      <div class="arr r tool" style="grid-column:5 / 7; --span:2"><span class="lab"><code>news.py --ticker NKE --days 90</code></span><span class="ln"></span><span class="sub">headlines; the tone was refused, so no data</span></div>
+      <div class="arr l " style="grid-column:2 / 6; --span:4"><span class="lab">Three reports: every number has an [E…] ID, every message ends with 🔊</span><span class="ln"></span><span class="sub">Stance per horizon: short · medium · long</span></div>
+      <div class="phase">3 · Verify every number</div>
+      <div class="arr r tool" style="grid-column:2 / 7; --span:5"><span class="lab"><code>verify.py --text-file</code> on each report</span><span class="ln"></span><span class="sub">54 checks logged: PASS, or FAIL with the stored value</span></div>
+      <div class="arr r loop" style="grid-column:2 / 6; --span:4"><span class="lab">A FAIL goes back to the analyst who wrote it</span><span class="ln"></span><span class="sub">correct the figure or withdraw it; the log keeps both</span></div>
+      <div class="phase">4 · Round 2 and precedent</div>
+      <div class="arr r " style="grid-column:2 / 6; --span:4"><span class="lab">1–3 targeted questions, mostly on the goal horizon</span><span class="ln"></span><span class="sub">plus: sentiment, find past comparable events</span></div>
+      <div class="arr l " style="grid-column:2 / 6; --span:4"><span class="lab">Event dates, each with a source page it opened</span><span class="ln"></span><span class="sub">2 NKE, 2 UAA, 1 adidas reports</span></div>
+      <div class="arr r tool" style="grid-column:2 / 7; --span:5"><span class="lab"><code>precedent.py --windows 5,30,90,250</code></span><span class="ln"></span><span class="sub">NKE vs its sector after each event, n = 5</span></div>
+      <div class="phase">5 · Verdict</div>
+      <div class="arr r tool" style="grid-column:2 / 7; --span:5"><span class="lab"><code>confidence.py</code> for each horizon, then the ADVICE scan</span><span class="ln"></span><span class="sub">short high · medium high · long low</span></div>
+      <div class="arr l " style="grid-column:1 / 3; --span:2"><span class="lab">Verdict card, posted at the top level of the channel</span><span class="ln"></span><span class="sub">Bearish · confidence high · 3 proofs · 28/28 citations</span></div>
+      <div class="arr r tool" style="grid-column:2 / 7; --span:5"><span class="lab"><code>evidence_table.py</code> · <code>round.py end</code></span><span class="ln"></span><span class="sub">card + table saved as room document verdict-NKE-2026-11-07</span></div>
+      <div class="phase">Any time</div>
+      <div class="arr r " style="grid-column:1 / 3; --span:2"><span class="lab"><code>explain E159</code> · <code>evidence</code> · <code>ask</code> · <code>pause</code> · <code>verdict now</code></span><span class="ln"></span><span class="sub">the chief answers in the same thread</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legend"><span><i></i>Message through the Switch room</span><span><i class="t"></i>Tool call on the host, writes evidence</span><span><i class="d"></i>Correction loop</span></div>
+  </div>
+</section>
+
 <section class="band" id="run">
   <div class="wrap">
     <div class="section-head">
@@ -339,12 +443,12 @@ footer p { color: var(--mist-soft); font-size: 14px; }
       <p class="lede">Excerpts from the actual Slack thread. Every number below is in the run's ledger. <a href="https://github.com/karan-patel11/stock-desk/blob/main/docs/desk-run-nke-2.md" target="_blank" rel="noopener">Read the full run record</a>.</p>
     </div>
     <div class="thread">
-      <div class="msg"><div class="av h">KP</div><div><div class="who">Karan <span>11:31 PM</span></div><div class="body"><span class="mono">@desk-chief analyze NKE</span></div></div></div>
-      <div class="msg"><div class="av c">C</div><div><div class="who">desk-chief <span>quotes the last saved verdict, opens a new run</span></div><div class="body">What's your goal for NKE? Reply with a number: 1 Short-term trade (1–4 weeks) · 2 Medium-term position (3–6 months) · 3 Long-term investment (1–3 years) · or 'all'.</div></div></div>
-      <div class="msg"><div class="av t">T</div><div><div class="who">desk-technical <span>round 1</span></div><div class="body">Stance: short=neutral · medium=bearish · long=bearish<br>200-day trend: close 38.59 is below SMA200 45.41 <span class="id">[E165, E167]</span> · RSI(14) at 54.88 <span class="id">[E169]</span><span class="voice">🔊 Technical: price is above its 50-day average but below its 200-day average; momentum is middling.</span></div></div></div>
-      <div class="msg"><div class="av c">C</div><div><div class="who">desk-chief <span>verification</span></div><div class="body">Fundamental report checked: all 16 numbers match the evidence, and all 24 citations pass. Accepted. Gaps to carry forward: no data on guidance or operating income.</div></div></div>
-      <div class="msg"><div class="av s">S</div><div><div class="who">desk-sentiment <span>round 1</span></div><div class="body">Tone: no data. GDELT rate-limited the request (HTTP 429). None of the returned headlines name Nike, so I built no theme from them.<span class="voice">🔊 Sentiment: no usable Nike news this run; the tone feed was rate-limited.</span></div></div></div>
-      <div class="msg"><div class="av c">C</div><div><div class="who">desk-chief <span>verdict</span></div><div class="body">Card posted in the channel, saved as <span class="mono">verdict-NKE-2026-11-07</span>. Confidence from the tool for each horizon. Run closed.</div></div></div>
+      <div class="msg"><div class="av h"><svg aria-hidden="true"><use href="#i-you"/></svg></div><div><div class="who">Karan <span>11:31 PM</span></div><div class="body"><span class="mono">@desk-chief analyze NKE</span></div></div></div>
+      <div class="msg"><div class="av c"><svg aria-hidden="true"><use href="#i-chief"/></svg></div><div><div class="who">desk-chief <span>quotes the last saved verdict, opens a new run</span></div><div class="body">What's your goal for NKE? Reply with a number: 1 Short-term trade (1–4 weeks) · 2 Medium-term position (3–6 months) · 3 Long-term investment (1–3 years) · or 'all'.</div></div></div>
+      <div class="msg"><div class="av t"><svg aria-hidden="true"><use href="#i-tech"/></svg></div><div><div class="who">desk-technical <span>round 1</span></div><div class="body">Stance: short=neutral · medium=bearish · long=bearish<br>200-day trend: close 38.59 is below SMA200 45.41 <span class="id">[E165, E167]</span> · RSI(14) at 54.88 <span class="id">[E169]</span><span class="voice">🔊 Technical: price is above its 50-day average but below its 200-day average; momentum is middling.</span></div></div></div>
+      <div class="msg"><div class="av c"><svg aria-hidden="true"><use href="#i-chief"/></svg></div><div><div class="who">desk-chief <span>verification</span></div><div class="body">Fundamental report checked: all 16 numbers match the evidence, and all 24 citations pass. Accepted. Gaps to carry forward: no data on guidance or operating income.</div></div></div>
+      <div class="msg"><div class="av s"><svg aria-hidden="true"><use href="#i-sent"/></svg></div><div><div class="who">desk-sentiment <span>round 1</span></div><div class="body">Tone: no data. GDELT rate-limited the request (HTTP 429). None of the returned headlines name Nike, so I built no theme from them.<span class="voice">🔊 Sentiment: no usable Nike news this run; the tone feed was rate-limited.</span></div></div></div>
+      <div class="msg"><div class="av c"><svg aria-hidden="true"><use href="#i-chief"/></svg></div><div><div class="who">desk-chief <span>verdict</span></div><div class="body">Card posted in the channel, saved as <span class="mono">verdict-NKE-2026-11-07</span>. Confidence from the tool for each horizon. Run closed.</div></div></div>
     </div>
     <div class="stats">
       <div class="stat"><span class="n">28/28</span><span class="k">citations verified</span></div>
