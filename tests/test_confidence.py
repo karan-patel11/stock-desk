@@ -188,3 +188,50 @@ def test_cli_contract(clean, capsys):
     out = json.loads(capsys.readouterr().out)
     assert code == 0 and out["ok"] is True and out["run"] == clean
     assert set(out["data"]) == {"horizon", "direction", "confidence", "reasons", "citations", "uncorrected"}
+
+
+
+# ---------------- sentiment not measured (interim news mode) ----------------
+
+def not_measured(horizon):
+    return f"sentiment: not measured for {horizon} (interim mode)"
+
+
+@pytest.mark.parametrize("horizon,stances", [
+    ("short", {"tech": "bullish", "fund": "bearish"}),
+    ("medium", {"tech": "bullish", "fund": "bullish"}),
+])
+def test_not_measured_is_no_penalty_and_high_is_unaffected(clean, horizon, stances):
+    data = conf(clean, horizon=horizon, sent="not_measured", **stances)
+    assert data["confidence"] == "high" and data["reasons"] == [not_measured(horizon)]
+
+
+def test_not_measured_keeps_medium_where_no_data_drops_to_low(clean):
+    measured = conf(clean, fund="neutral", sent="not_measured")
+    missing = conf(clean, fund="neutral", sent="no_data")
+    assert measured["confidence"] == "medium" and measured["reasons"] == [not_measured("medium")]
+    assert missing["confidence"] == "low" and missing["reasons"] == ["sentiment: no data"]
+
+
+def test_not_measured_on_long_still_hits_the_cap(clean):
+    data = conf(clean, horizon="long", fund="bullish", sent="not_measured")
+    assert data["confidence"] == "medium"
+    assert data["reasons"] == [not_measured("long"), confidence.LONG_CAP_REASON]
+
+
+def test_not_measured_does_not_hide_real_penalties(run_id):
+    data = conf(run_id, sent="not_measured")  # no precedent, no checks
+    assert data["confidence"] == "low" and data["reasons"] == ["no precedent check", not_measured("medium")]
+
+
+def test_gdelt_refused_is_still_no_data_with_the_penalty(clean):
+    """A refused news call is an error; the chief passes no_data, which keeps its -1
+    (chief.md wording: tests/test_agents_and_template.py)."""
+    data = conf(clean, sent="no_data")
+    assert data["confidence"] == "low" and data["reasons"] == ["sentiment: no data"]
+
+
+def test_not_measured_only_for_sentiment(clean):
+    with pytest.raises(ToolError) as err:
+        conf(clean, fund="not_measured")
+    assert err.value.code == "bad_input"

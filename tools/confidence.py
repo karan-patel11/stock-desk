@@ -4,12 +4,13 @@
 
 Deterministic confidence label (low | medium | high) for one horizon. No LLM, no judgment.
 Analyst stances come from the arguments (fund/tech: bullish|bearish|neutral|no_data;
-sent: positive|negative|neutral|no_data). Precedent and verification data are read from the
+sent: positive|negative|neutral|no_data|not_measured). Precedent and verification data are read from the
 run's ledger only: precedent.py "Events used" entries and evidence/<run>/verifications.jsonl.
 
 Rule (README, "How confidence works"):
   start at medium (score 1), then -1 for each of:
-    each analyst whose stance is no_data
+    each analyst whose stance is no_data (sentiment not_measured is NOT a penalty: the interim news mode does not
+      measure that window; it only adds the reason "sentiment: not measured for <horizon> (interim mode)")
     precedent ran but has fewer than 3 events in the horizon's window(s)
     precedent was not run in this run (then the event-count penalty is not added on top)
     any uncorrected citation failure (latest check FAIL)
@@ -37,7 +38,7 @@ PRECEDENT_WINDOWS = {"short": [5], "medium": [30, 90], "long": [250]}
 MIN_EVENTS = 3
 ANALYST_NAMES = {"fund": "fundamental", "tech": "technical", "sent": "sentiment"}
 STANCES = ("bullish", "bearish", "neutral", "no_data")
-SENTIMENTS = ("positive", "negative", "neutral", "no_data")
+SENTIMENTS = ("positive", "negative", "neutral", "no_data", "not_measured")
 LONG_CAP_REASON = "capped: about 3 years of filings, no valuation data"
 _EVENTS_USED = re.compile(r"^Events used, (\d+)-session window\b")
 
@@ -58,10 +59,13 @@ def precedent_counts(run: str) -> dict[int, int] | None:
 
 def score(horizon: str, direction: str, stances: dict[str, str], precedent: dict[int, int] | None,
           citations: dict[str, Any]) -> tuple[str, list[str]]:
-    reasons: list[str] = []
+    reasons: list[str] = []  # penalties: each one lowers the score by one level
+    notes: list[str] = []    # shown with the result, never a penalty
     for key in ("fund", "tech", "sent"):
         if stances[key] == "no_data":
             reasons.append(f"{ANALYST_NAMES[key]}: no data")
+    if stances["sent"] == "not_measured":
+        notes.append(f"sentiment: not measured for {horizon} (interim mode)")
     if precedent is None:
         reasons.append("no precedent check")
     else:
@@ -78,9 +82,10 @@ def score(horizon: str, direction: str, stances: dict[str, str], precedent: dict
     if not reasons and citations["all_pass"] and all(stances[a] == direction for a in CORE[horizon]):
         value = 2
     capped = min(value, CAP[horizon])
+    shown = reasons + notes
     if horizon == "long" and capped < value:
-        reasons.append(LONG_CAP_REASON)
-    return LEVELS[max(0, min(capped, 2))], reasons
+        shown.append(LONG_CAP_REASON)
+    return LEVELS[max(0, min(capped, 2))], shown
 
 
 def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
