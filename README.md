@@ -136,6 +136,22 @@ Dictate into Slack with Wispr Flow (or any dictation tool); no integration is ne
 `desk-fundamental`, `desk-technical` and `desk-sentiment` to Wispr's dictionary: agents wake only on their exact name,
 so a misspelled name means silence. In the desk room, `@chief` also reaches desk-chief.
 
+### Narrator (optional)
+
+`scripts/narrator.py` reads the desk channel aloud: only the lines that start with 🔊, each once, in posting order, and
+only messages posted after it started. It is read-only. It calls only `conversations.history` and
+`conversations.replies`, never posts, and never talks to the agents, so it does not bypass Switch.
+
+```bash
+# in .env: SLACK_BOT_TOKEN (xoxb-..., scope channels:history; the app must be in the channel) and SLACK_CHANNEL_ID
+python3 scripts/narrator.py --dry-run --once     # check the settings: prints instead of speaking
+python3 scripts/narrator.py                      # speaks with say (macOS) or espeak (Linux); Ctrl-C to stop
+```
+
+If neither `say` nor `espeak` is installed it stops with an error. It polls every 4 seconds (`--interval`) and backs off
+when Slack rate limits it. Start it before `@desk-chief analyze`, or within 2 hours of the run's first message
+(`--lookback-min`), so it finds the run's thread.
+
 ## Demo day
 
 GDELT often rate limits for minutes at a time, and a refused call means a sentiment error in the thread. Warm the cache
@@ -241,7 +257,7 @@ agents/            instruction files, source of truth for the 4 agents (chief ma
 switch/            desk-team.skeleton -> desk-team.template.yaml (generated), mention-test.template.yaml
 tools/             common fund tech news precedent verify round confidence evidence_table
 config/            peers.json sector_etf.json
-scripts/           build_template.py smoke_live.sh warm_demo.sh
+scripts/           build_template.py smoke_live.sh warm_demo.sh narrator.py
 docs/              DECISIONS.md, Stage 0 runbook and results, desk run records
 tests/             offline tests and synthetic fixtures
 evidence/ cache/   generated, gitignored

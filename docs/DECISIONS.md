@@ -57,9 +57,13 @@ Locked on 2026-11-06 (change prompt for the 2026-11-07 submission). Status says 
   insufficient_coverage (so no_data for confidence); long reads the 90-day tone at -1.0 / +1.0.
 - Room alias `chief` for desk-chief, from the documented room `aliases:` field. Not yet seen working in Slack.
 
-## Narrator (Phase 4, optional, needs go-ahead)
+## Narrator (Phase 4, built)
 
-- Read-only Slack listener that speaks "🔊 " lines locally. Never posts, never talks to agents.
+- `scripts/narrator.py`: read-only Slack listener that speaks "🔊 " lines locally with `say` or `espeak`. It may call
+  only conversations.history and conversations.replies; it never posts and never talks to agents.
+- Speaks only messages posted after it started, each line once. It finds thread parents up to 120 minutes back.
+- SLACK_BOT_TOKEN and SLACK_CHANNEL_ID come from `.env`. Tests use hand-written fixtures in Slack's documented
+  response shape, because no real responses were recorded.
 
 ## CUT: not built
 
