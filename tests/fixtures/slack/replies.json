@@ -1,0 +1,10 @@
+{"ok": true, "has_more": false, "messages": [
+  {"type": "message", "user": "UCHIEF", "ts": "1762479000.000100", "thread_ts": "1762479000.000100",
+   "text": "Starting run r-20261107-03 for NKE.\n🔊 Chief: starting the old run."},
+  {"type": "message", "user": "UTECH", "ts": "1762479500.000500", "thread_ts": "1762479000.000100",
+   "text": "@desk-chief [TECHNICAL] before the narrator started\n🔊 Technical: posted before start."},
+  {"type": "message", "user": "UTECH", "ts": "1762480100.000700", "thread_ts": "1762479000.000100",
+   "text": "@desk-chief [TECHNICAL] NKE · Scope: trend and momentum\nStance: short=bearish · medium=bearish · long=neutral\n🔊 Technical: the price is below its 200-day average &amp; momentum is weak."},
+  {"type": "message", "user": "UFUND", "ts": "1762480200.000900", "thread_ts": "1762479000.000100",
+   "text": "@desk-chief [FUNDAMENTAL] NKE\n  🔊 Fundamental: revenue fell &lt;2 percent, margins held.\nnot a voice line 🔊 here"}
+]}
