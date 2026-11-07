@@ -17,7 +17,8 @@ def test_start_creates_run_state_and_pointer():
     run, evidence, data = call("start", "nke")
     assert run.startswith("r-") and evidence == []
     assert data["ticker"] == "NKE" and data["round"] == 1 and data["stop"] is False
-    assert data["step"] == "round_1" and "ROUND 1" in data["next_action"]
+    assert data["step"] == "round_1" and data["goal"] is None
+    assert data["next_action"].startswith("ASK GOAL") and "ask the user's goal" in data["next_action"]
     assert common.resolve_run(None) == run
     state = json.loads((common.evidence_root() / run / "state.json").read_text())
     assert state["status"] == "active"
@@ -80,3 +81,43 @@ def test_cli_output_is_contract_json(capsys):
     assert common.run_cli(rnd.main, ["start", "NKE"]) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["ok"] is True and payload["data"]["ticker"] == "NKE"
+
+
+
+def test_goal_given_at_start_skips_the_question():
+    _, _, data = call("start", "NKE", "--goal", "long")
+    assert data["goal"] == "long" and data["headline"] == "long"
+    assert data["next_action"].startswith("ROUND 1")
+
+
+def test_goal_set_later_and_all_means_medium_headline():
+    run, _, _ = call("start", "NKE")
+    _, _, data = call("goal", "all")
+    assert data["goal"] == "all" and data["headline"] == "medium" and data["next_action"].startswith("ROUND 1")
+    _, _, status = call("status")
+    assert status["goal"] == "all"
+    state = json.loads((common.evidence_root() / run / "state.json").read_text())
+    assert state["goal"] == "all" and state["history"][-1]["event"] == "goal all"
+
+
+def test_goal_does_not_lift_the_round_cap():
+    call("start", "NKE", "--goal", "short")
+    call("next")
+    call("goal", "medium")
+    _, _, stop = call("next")
+    assert stop["stop"] is True and stop["round"] == 2 and "confidence.py" in stop["next_action"]
+
+
+@pytest.mark.parametrize("argv", [["start", "NKE", "--goal", "weekly"], ["goal", "3"]])
+def test_bad_goal(argv):
+    call("start", "NKE")
+    with pytest.raises(ToolError) as err:
+        call(*argv)
+    assert err.value.code == "bad_input"
+
+
+def test_goal_after_end_is_bad_input():
+    call("start", "NKE")
+    call("end")
+    with pytest.raises(ToolError):
+        call("goal", "short")
