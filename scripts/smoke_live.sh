@@ -37,10 +37,10 @@ run_tool() {
   echo "== $*"
   "$PY" "$@" --run "$RUN" | summarize || FAILED=1
 }
-run_tool tools/fund.py "$TICKER" --quarters 8
-run_tool tools/tech.py "$TICKER"
+run_tool tools/fund.py "$TICKER" --quarters 12
+run_tool tools/tech.py "$TICKER" --lookback 2y
 run_tool tools/news.py "$NAME" --days 30
-if [ -n "$DATES" ]; then run_tool tools/precedent.py "$TICKER" --dates "$DATES" --windows 5,30; else echo "== precedent.py skipped (pass verified event dates as the 3rd argument)"; fi
+if [ -n "$DATES" ]; then run_tool tools/precedent.py "$TICKER" --dates "$DATES" --windows 5,30,90,250; else echo "== precedent.py skipped (pass verified event dates as the 3rd argument)"; fi
 echo "== verify.py (E1 must exist and match itself)"
 VAL="$("$PY" -c 'import json,sys; print(json.load(open(sys.argv[1]))["value"])' "$EVHOME/evidence/$RUN/E1.json" 2>/dev/null || true)"
 if [ -n "$VAL" ]; then "$PY" tools/verify.py E1 --value "$VAL" --run "$RUN" | summarize || FAILED=1; fi

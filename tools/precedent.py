@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""precedent.py TICKER --dates 2023-09-15,2024-03-21 [--etf XLY] [--windows 5,30] [--urls U1,U2] [--run RUN]
+"""precedent.py TICKER --dates 2023-09-15,2024-03-21 [--etf XLY] [--windows 5,30,90,250] [--urls U1,U2] [--run RUN]
 
 For each past event: the stock's return minus its sector ETF's return over each window, then the
 mean across events. Uses total-return (adjusted) closes for both.
@@ -25,6 +25,7 @@ from common import ToolError
 
 SOURCE = "Yahoo Finance via yfinance (unofficial, disclosed): daily bars, total-return adjusted (auto_adjust=True)"
 MAX_EVENTS = 12
+MAX_WINDOW = 250  # about one trading year: the long-horizon precedent window
 CONVENTION = ("day 0 = first session on/after the event date; base = close of the prior session; "
               "window N = close N sessions after the base; excess = stock return - ETF return")
 
@@ -91,8 +92,8 @@ def main(argv: Sequence[str], today: date | None = None) -> tuple[str | None, li
         windows = sorted({int(w) for w in parse_list(args.windows, "--windows")})
     except ValueError as exc:
         raise ToolError("bad_input", "--windows must be integers") from exc
-    if any(not 1 <= w <= 120 for w in windows):
-        raise ToolError("bad_input", "each window must be between 1 and 120 sessions")
+    if any(not 1 <= w <= MAX_WINDOW for w in windows):
+        raise ToolError("bad_input", f"each window must be between 1 and {MAX_WINDOW} sessions")
 
     etf = (args.etf or (common.load_config("sector_etf.json").get("overrides") or {}).get(ticker) or "").strip().upper()
     if not etf:

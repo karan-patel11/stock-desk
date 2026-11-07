@@ -162,3 +162,14 @@ def test_tiers_market_data_t2_event_dates_unrated(prices, run_id):
     assert stock["source_tier"] == "T2" and stock["source"].startswith("Yahoo Finance via yfinance (unofficial, disclosed)")
     # the excess return is derived from the event date too, so it takes the weaker tier
     assert common.read_evidence(run_id, window["excess"]["id"])["source_tier"] == "unrated"
+
+
+def test_250_session_window_is_accepted_and_needs_full_history(prices, run_id):
+    _, _, data = run("NKE", "--dates", SESSIONS[5], "--windows", "5,30,90,250")
+    assert data["windows"] == [5, 30, 90, 250]
+    event = data["events"][0]
+    assert set(event["windows"]) == {"5", "30"}            # 60 synthetic sessions: 90 and 250 do not fit
+    assert set(event["skipped"]) == {"90", "250"}
+    assert data["summary"]["250"] == {"n": 0, "mean_excess": None, "small_sample": True}
+    with pytest.raises(ToolError):
+        run("NKE", "--dates", SESSIONS[5], "--windows", "251")
