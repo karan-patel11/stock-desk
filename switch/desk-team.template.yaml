@@ -5,6 +5,7 @@
 #   - params is a mapping keyed by name ("params: <name>: type/description/label/default/...")
 #   - a declared param's placeholder is substituted in any string of the document, so instructions and docs too
 #   - type: bridge with no default is required; the deployer picks the messaging app on the form
+#   - room aliases: an "aliases:" mapping of agent name to alias in the room block; alias chars: letters, digits, . - _
 # UNVERIFIED (the docs do not settle it):
 #   - whether a room name with an upper-case ticker is kept as written (docs only say "name: text")
 #   - whether the kickoff starts a new thread or posts at the channel top level
@@ -253,26 +254,44 @@ room:
   bridge: "{bridge}"
   agents: ["desk-chief", "desk-fundamental", "desk-technical", "desk-sentiment"]
   users: ["{$creator}"]
+  aliases:
+    desk-chief: "chief"
   instructions: |
     Stock Desk rules for everyone in this room.
     1. Every number carries an evidence ID such as [E12]. No ID, no number. Agents never calculate or recall numbers.
     2. If data is missing or a tool fails, say "no data" and name the gap. Never guess.
-    3. Research, not advice. No buy, sell, hold, price targets or guarantees.
+    3. Research, not advice. Outlooks are Bullish, Bearish or Neutral only. No buy, sell, hold, price targets,
+       "good to buy" or guarantees. Every verdict ends with "Research only, not financial advice."
     4. Only desk-chief addresses the analysts. Analysts answer desk-chief and never mention each other.
-    5. One thread per run. Humans may interrupt at any time; desk-chief routes their message to the right analyst.
-    6. At most two rounds. Then desk-chief writes the verdict.
+    5. Three layers: the verdict card is posted in the channel, the debate stays in its thread, and the
+       evidence table is in the saved verdict document.
+    6. At most two rounds. Confidence comes only from confidence.py; news sentiment can only lower it.
+    7. Every agent message ends with one line starting with 🔊: a plain summary of at most 25 words.
   docs:
     - name: "desk-rules"
       description: "How the desk works, for humans joining the room"
       instructions: "Read-only reference. Do not edit."
       content: |
         Stock Desk: how to use this room
-        Type: @desk-chief analyze {ticker}
+        Start: @desk-chief analyze {ticker} [short|medium|long|all] [, focus on <topic>]
+        (@chief works too in this room.) Without a goal, desk-chief asks for one:
+        1 short-term (1-4 weeks), 2 medium-term (3-6 months), 3 long-term (1-3 years), or all.
+        All three horizons are always computed; the goal picks the headline.
         Flow: fundamental, technical and sentiment analysts report with evidence IDs. desk-chief verifies every
         number against the evidence ledger, asks follow-up questions (two rounds at most), orders a precedent
-        check, then posts and saves a verdict named verdict-<TICKER>-<date>.
-        Commands for desk-chief: "verdict now" skips to the verdict. "pause" holds until you say "resume".
-        You can interrupt at any time. Your message is treated as new evidence and routed to the right analyst.
+        check, runs confidence.py for each horizon, and posts a verdict card in the channel.
+        Three layers: card in the channel, debate in the thread, evidence table in the document
+        verdict-<TICKER>-<date>.
+        Commands for desk-chief, any time:
+          explain E<n>    what a fact is, its source and tier, and whether it passed verification
+          evidence        the evidence table for the current run
+          ask fundamental|technical|sentiment: <question>
+          verdict now     skip to the verdict
+          pause / resume
+        Confidence (low, medium, high) is set by fixed rules in confidence.py, never by an agent.
+        Any other message during a run is new evidence and is routed to the right analyst.
+        Voice: dictate into Slack (for example with Wispr Flow). Spell agent names exactly: desk-chief,
+        desk-fundamental, desk-technical, desk-sentiment. A misspelled name means silence.
         Research only, not financial advice.
 
 kickoff: |

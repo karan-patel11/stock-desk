@@ -24,7 +24,7 @@ OUTPUT = ROOT / "switch" / "desk-team.template.yaml"
 AGENTS = ROOT / "agents"
 MARKER = re.compile(r"^(?P<indent>[ ]*)@@INSTRUCTIONS:(?P<name>[a-z]+)@@[ ]*$")
 SUBSTITUTIONS = (("$STOCKDESK_HOME", "{stockdesk_home}"), ("$STOCKDESK_PY", "{python}"))
-MAX_LINES = 60
+MAX_LINES = {"chief": 80, "fundamental": 60, "technical": 60, "sentiment": 60}
 UNVERIFIED = (
     "upper-case ticker in the room name desk-{ticker} (TEMPLATES.md says only 'name: text')",
     "whether the kickoff starts a new thread or posts at the channel top level",
@@ -42,8 +42,8 @@ def agent_text(name: str) -> str:
         raise SystemExit(f"missing agent file: {path}")
     text = path.read_text(encoding="utf-8")
     lines = text.rstrip("\n").splitlines()
-    if len(lines) > MAX_LINES:
-        raise SystemExit(f"{path.name} has {len(lines)} lines; the limit is {MAX_LINES}")
+    if len(lines) > MAX_LINES.get(name, 60):
+        raise SystemExit(f"{path.name} has {len(lines)} lines; the limit is {MAX_LINES.get(name, 60)}")
     if "\t" in text:
         raise SystemExit(f"{path.name} contains a tab character")
     for number, line in enumerate(lines, 1):
@@ -92,6 +92,10 @@ def validate(text: str) -> str:
     names = [a["name"] for a in doc["agents"]]
     assert names == ["desk-chief", "desk-fundamental", "desk-technical", "desk-sentiment"], names
     assert doc["room"]["agents"] == names
+    aliases = doc["room"].get("aliases") or {}
+    assert set(aliases) <= set(names), f"aliases name unknown agents: {sorted(set(aliases) - set(names))}"
+    for alias in aliases.values():  # Switch: letters, digits, '.', '-', '_' only (core/switch_core/aliases.py)
+        assert re.fullmatch(r"[A-Za-z0-9._-]+", alias), f"invalid alias {alias!r}"
     assert doc["kickoff"].strip().startswith("@desk-chief analyze")
     for agent in doc["agents"]:
         assert agent["instructions"].strip(), agent["name"]

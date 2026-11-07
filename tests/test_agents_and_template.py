@@ -107,3 +107,9 @@ def test_warm_demo_uses_the_sentiment_agents_exact_news_query():
 def test_warm_demo_needs_ticker_and_company():
     result = subprocess.run(["bash", str(ROOT / "scripts" / "warm_demo.sh")], capture_output=True, text=True)
     assert result.returncode == 2 and "usage" in result.stderr
+
+
+def test_room_alias_and_rules():
+    text = (ROOT / "switch" / "desk-team.template.yaml").read_text(encoding="utf-8")
+    assert '  aliases:\n    desk-chief: "chief"\n' in text
+    assert "Three layers" in text and "confidence.py" in text and "🔊" in text
