@@ -28,7 +28,7 @@ local ledger (`evidence/r-20261107-05/`).
 | Advice-word scan | PASS | 8 ADVICE scans, including the draft card, all PASS |
 | Precedent | PASS | 5 events (2 NKE, 2 UAA, 1 ADDYY), each with a URL the sentiment agent opened; windows 5, 30, 90, 250; n = 5 in each |
 | Confidence from the tool | PASS | `confidence.json` matches the card for all three horizons (table below) |
-| Card and saved document | PASS (tiers: see below) | Card posted as a new top-level message; room document `verdict-NKE-2026-11-07` per the chief. `!list-documents` was not run |
+| Card and saved document | PASS (posted card's tier wording: see below) | Card posted as a new top-level message; `!list-documents` lists `verdict-NKE-2026-11-07` |
 | Ledger count | PASS | 369 entries (fund.py 164, precedent.py 152, news.py 42, tech.py 11), as the card states |
 
 Confidence, from `evidence/r-20261107-05/confidence.json`:
@@ -58,7 +58,8 @@ The card's three proofs, checked against the ledger:
 - **Tier labels.** The chief said its first posted card described sources in words ("official filing", "unofficial")
   instead of tiers, and that it posted a correction and saved the correct labels. Locally,
   `reports/card-draft.txt` has the right labels (T1, T2, unrated), but `reports/verdict-doc.md` still has the wording.
-  The saved room document was **not checked**.
+  Checked afterwards: desk-chief loaded the saved room document (Switch `load_internal_documents`) and quoted its
+  three proofs, which use T1, T2 and unrated. Only the card first posted in the channel has the wording.
 - **A duplicate precedent run.** The chief ran the 5-session window once more with one event by mistake (E295, E296),
   then reran all five events (E362 to E369). `confidence.py` reads the latest entry per window, so it used n = 5. The
   card cites only the five-event run. The duplicate stays in the ledger, which is never edited.
@@ -83,6 +84,4 @@ The card's three proofs, checked against the ledger:
 
 - `ask`, `pause` / `resume`, and a human interrupt mid-run.
 - The `chief` alias (not set) and the updated room instructions and `desk-rules` document (not applied).
-- The content of the saved `verdict-NKE-2026-11-07` document (`!list-documents` lists it, with the description
-  "medium-term Bearish (confidence high, from the tool)").
 - Sentiment with a warmed cache and a real 90-day tone.
