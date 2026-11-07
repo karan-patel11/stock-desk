@@ -63,6 +63,7 @@ Agents reason and talk. Python does every calculation and writes the evidence th
 | SEC parsing (`fund.py`) | Tested against **synthetic** fixtures for a fictional company (`tests/fixtures/build_synthetic.py`), not recorded SEC responses |
 | Live data (SEC, Yahoo, GDELT) | `scripts/smoke_live.sh NKE Nike` passed on 2026-11-06 |
 | Switch template and Slack | Stage 0 and two full NKE desk runs passed on Slack on 2026-11-05 (`docs/stage0-results.md`, `docs/desk-run-nke.md`) |
+| New rules in Slack (goal, horizons, confidence tool, card) | One full NKE run on 2026-11-07: 28/28 citations, confidence as computed by `confidence.py` (`docs/desk-run-nke-2.md`). Agent instructions were pasted into Switch Console, not loaded from the template |
 
 ## Setup (about 10 minutes, excluding Slack)
 
