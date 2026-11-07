@@ -296,3 +296,51 @@ def test_cache_ttl_hours(gdelt, run_id, monkeypatch, _isolated_home):
         with pytest.raises(ToolError) as err:
             news.news_cache_ttl()
         assert err.value.code == "bad_input"
+
+
+
+# ---------------- --ticker: the query is built from config, never typed ----------------
+
+def test_ticker_builds_the_fixed_query(gdelt, run_id):
+    calls, _ = gdelt
+    _, _, data = news.main(["--ticker", "nke", "--days", "90"])
+    assert data["query"] == "Nike (earnings OR shares OR guidance) sourcelang:english"
+    assert data["company_name"] == "Nike"
+    assert all("query=Nike+%28earnings+OR+shares+OR+guidance%29+sourcelang%3Aenglish" in c for c in calls)
+    assert all("timespan=90d" in c for c in calls)
+
+
+def test_ticker_and_the_same_typed_query_share_one_cache_entry(gdelt, run_id):
+    calls, _ = gdelt
+    news.main(["--ticker", "NKE", "--days", "90"])
+    count = len(calls)
+    _, _, typed = news.main(["Nike (earnings OR shares OR guidance) sourcelang:english", "--days", "90"])
+    assert len(calls) == count and typed["cached"] is True
+    _, _, other = news.main(["NIKE (earnings OR shares OR guidance) sourcelang:english", "--days", "90"])
+    assert other["cached"] is False  # any other spelling is a different cache entry
+
+
+def test_names_are_read_from_config(gdelt, run_id, _isolated_home):
+    (_isolated_home / "config" / "news_names.json").write_text(json.dumps({"ZZZ": "Zed Holdings"}))
+    _, _, data = news.main(["--ticker", "ZZZ"])
+    assert data["query"].startswith("Zed Holdings (earnings")
+
+
+@pytest.mark.parametrize("names,ticker", [
+    ({"NKE": "Nike"}, "ZZZ"),                 # not configured
+    ({"NKE": ""}, "NKE"),
+    ({"NKE": '"Nike"'}, "NKE"),               # quote marks
+    ({"NKE": "Nike  Inc"}, "NKE"),            # double space
+])
+def test_missing_or_bad_name_is_bad_input(gdelt, run_id, _isolated_home, names, ticker):
+    (_isolated_home / "config" / "news_names.json").write_text(json.dumps(names))
+    with pytest.raises(ToolError) as err:
+        news.main(["--ticker", ticker])
+    assert err.value.code == "bad_input"
+
+
+@pytest.mark.parametrize("argv", [[], ["Nike", "--ticker", "NKE"]])
+def test_query_or_ticker_exactly_one(gdelt, run_id, argv):
+    with pytest.raises(ToolError) as err:
+        news.main(argv)
+    assert err.value.code == "bad_input"

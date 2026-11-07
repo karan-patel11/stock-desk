@@ -82,14 +82,15 @@ def test_build_fails_on_braces_in_an_agent_file(tmp_path, monkeypatch):
     assert "curly brace" in str(err.value)
 
 
-NEWS_CALL_AGENT = re.compile(r'tools/news\.py "COMPANY ([^"]*)" (--days \d+)')
-NEWS_CALL_WARM = re.compile(r'tools/news\.py "\$COMPANY ([^"]*)" (--days \d+)')
+NEWS_CALL_AGENT = re.compile(r'tools/news\.py (--ticker) TICKER (--days \d+) --run RUN')
+NEWS_CALL_WARM = re.compile(r'tools/news\.py (--ticker) "\$TICKER" (--days \d+) --run "\$RUN"')
 
 
 def _one_news_call(text: str, pattern: re.Pattern, where: str) -> tuple[str, str]:
-    assert len(re.findall(r'tools/news\.py "', text)) == 1, f"{where}: expected exactly one news.py call"
+    assert len(re.findall(r'tools/news\.py ', text)) == 1, f"{where}: expected exactly one news.py call"
+    assert not re.search(r'tools/news\.py "', text), f"{where}: free-text query; use --ticker"
     found = pattern.findall(text)
-    assert len(found) == 1, f"{where}: news.py call does not have the COMPANY-first shape"
+    assert len(found) == 1, f"{where}: news.py call is not the --ticker shape"
     return found[0]
 
 
@@ -104,7 +105,7 @@ def test_warm_demo_uses_the_sentiment_agents_exact_news_query():
     assert warm == agent == template, f"query drift: warm_demo.sh {warm} vs sentiment.md {agent} vs template {template}"
 
 
-def test_warm_demo_needs_ticker_and_company():
+def test_warm_demo_needs_a_ticker():
     result = subprocess.run(["bash", str(ROOT / "scripts" / "warm_demo.sh")], capture_output=True, text=True)
     assert result.returncode == 2 and "usage" in result.stderr
 
@@ -140,7 +141,8 @@ def test_every_agent_ends_messages_with_a_voice_line():
 def test_analysts_run_tools_once_with_the_widest_settings():
     assert "fund.py TICKER --quarters 12 --run RUN" in agent("fundamental")
     assert "tech.py TICKER --lookback 2y --run RUN" in agent("technical")
-    assert re.search(r'news\.py "[^"]*" --days 90 --run RUN', agent("sentiment"))
+    assert "news.py --ticker TICKER --days 90 --run RUN" in agent("sentiment")
+    assert "News cached, fetched <data.fetched_at>" in agent("sentiment")
     assert "unweighted, tiers not applied" in agent("sentiment")
 
 

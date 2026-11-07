@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 """news.py "QUERY" [--days 30] [--run RUN]
+news.py --ticker TICKER [--days 30] [--run RUN]
+
+With --ticker the query is built here, never typed by an agent: the company name from config/news_names.json
+in QUERY_TEMPLATE. The same ticker always gives the same text, so the desk's call and scripts/warm_demo.sh
+use the same cache entry. A ticker with no configured name is bad_input.
 
 Recent headlines from the GDELT DOC 2.0 API: up to 20 articles (title, date, domain, URL),
 the average tone over the window, and the most repeated words in the titles.
@@ -41,6 +46,8 @@ CACHE_TTL_ENV = "STOCKDESK_NEWS_CACHE_TTL"        # seconds; wins when set
 CACHE_TTL_HOURS_ENV = "STOCKDESK_CACHE_TTL_HOURS"  # hours; news.py only (other tools: STOCKDESK_CACHE_TTL)
 MAX_ARTICLES = 20
 SOURCE = "GDELT DOC 2.0"
+QUERY_TEMPLATE = "{name} (earnings OR shares OR guidance) sourcelang:english"
+NAMES_CONFIG = "news_names.json"
 STOPWORDS = frozenset("""
 about after again against also amid been before being between both could does doing down during each
 from further have having here into just like more most much only other over said says same shares share
@@ -137,13 +144,33 @@ def top_keywords(titles: list[str], exclude: set[str], limit: int = 10) -> list[
     return ranked[:limit]
 
 
+def company_name(ticker: str) -> str:
+    """The configured news name for a ticker, used verbatim. Missing or malformed: bad_input, never a guess."""
+    names = common.load_config(NAMES_CONFIG)
+    name = names.get(ticker)
+    if not isinstance(name, str) or not name.strip():
+        raise ToolError("bad_input", f"no news name for {ticker} in config/{NAMES_CONFIG}; add one before analyzing")
+    if name != " ".join(name.split()) or '"' in name or not 2 <= len(name) <= 60:
+        raise ToolError("bad_input", f"config/{NAMES_CONFIG}: name for {ticker} must be 2-60 characters, "
+                                     "single-spaced, with no quote marks")
+    return name
+
+
 def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
     parser = common.ContractParser(prog="news.py", description="Recent headlines and tone from GDELT.")
-    parser.add_argument("query")
+    parser.add_argument("query", nargs="?", default=None)
+    parser.add_argument("--ticker", default=None, help="build the query from config/news_names.json")
     parser.add_argument("--days", type=int, default=30, help="look-back window, 1-90 days")
     common.add_run_argument(parser)
     args = parser.parse_args(list(argv))
-    query = " ".join(args.query.split())
+    if (args.query is None) == (args.ticker is None):
+        raise ToolError("bad_input", "give exactly one of: QUERY or --ticker TICKER")
+    name = None
+    if args.ticker is not None:
+        name = company_name(common.normalize_ticker(args.ticker))
+        query = QUERY_TEMPLATE.format(name=name)
+    else:
+        query = " ".join(args.query.split())
     if not 2 <= len(query) <= 200:
         raise ToolError("bad_input", "query must be 2-200 characters")
     if not 1 <= args.days <= 90:
@@ -216,7 +243,7 @@ def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
         unavailable.append({"metric": "keywords", "reason": "no word appears in two or more titles"})
 
     data = {
-        "query": query, "days": args.days, "retrieved_at": retrieved_at, "articles": article_rows,
+        "query": query, "company_name": name, "days": args.days, "retrieved_at": retrieved_at, "articles": article_rows,
         "average_tone": tone_row, "keywords": keywords_row, "unavailable": unavailable,
         "from_cache": all(from_cache),  # true only if every GDELT response used came from the local cache
         "cached": any(from_cache),      # true if ANY response used came from the cache: disclose it

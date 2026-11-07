@@ -118,7 +118,7 @@ All tools print one JSON object on stdout (`{"ok":true,"run":...,"evidence":[...
 python tools/round.py start NKE [--goal short|medium|long|all] | goal G | status | next | end
 python tools/fund.py NKE [--quarters 12]         # SEC XBRL: revenue, margins, EPS, debt, YoY (derived)
 python tools/tech.py NKE [--lookback 2y]         # SMA50/200, cross, RSI(14), ATR(14), volume ratio, 52-week range
-python tools/news.py "Nike" [--days 90]          # GDELT headlines, average tone, repeated title words
+python tools/news.py --ticker NKE [--days 90]    # GDELT headlines, average tone, title words (name from config)
 python tools/precedent.py NKE --dates 2024-06-27,2024-12-19 [--etf XLY] [--windows 5,30,90,250] [--urls U1,U2]   # example dates; use ones you have verified
 python tools/verify.py E12 --value 8.1%          # or --text-file report.txt to scan a whole report
 python tools/verify.py E12 --withdraw            # record that the analyst withdrew the claim citing E12
@@ -171,17 +171,18 @@ first:
 
 ```bash
 # in .env: STOCKDESK_CACHE_TTL_HOURS=24   (or STOCKDESK_NEWS_CACHE_TTL=86400)
-scripts/warm_demo.sh NKE Nike
+scripts/warm_demo.sh NKE
 ```
 
-`warm_demo.sh` starts a throwaway run (the desk starts its own) and runs the sentiment agent's exact `news.py` query,
-always fetching fresh; a test fails if the script and `agents/sentiment.md` differ. **The Company argument must be the
-brand name in the form the agent searches:** the common brand name with no corporate suffix (Inc, Corp, Ltd, Co),
-capitalized as normally written, for example Nike, Apple, Microsoft. The cache matches exact text, so `"Nike Inc"` or
-`NIKE` would warm an entry the agent never reads. If you give the desk a company name yourself, write it the same way:
-the agent searches a given name as written. If GDELT refuses, the script exits 1 and leaves the cache as it was; wait a
-few minutes and run it again. The evidence still records the original `retrieved_at`, so the age of the headlines stays
-visible. Clear the variable after the demo.
+`warm_demo.sh` starts a throwaway run (the desk starts its own) and makes the sentiment agent's exact call,
+`news.py --ticker NKE --days 90`, always fetching fresh. Neither the agent nor the script types the query:
+`news.py --ticker` builds it from the fixed name in `config/news_names.json`
+(`Nike (earnings OR shares OR guidance) sourcelang:english`), so both produce the same request and hit the same cache
+entry. A test fails if the script's call and `agents/sentiment.md` differ. To analyze a ticker that is not in
+`config/news_names.json`, add its common brand name first; otherwise `news.py` returns bad_input. If GDELT refuses,
+the script exits 1 and leaves the cache as it was; wait at least an hour (refusals keep the block going) and run it
+again. A cached answer is disclosed: the sentiment report says "News cached, fetched <time>", and the evidence keeps
+the original `retrieved_at`. Clear the variable after the demo.
 
 ## Design decisions worth knowing
 

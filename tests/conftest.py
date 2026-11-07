@@ -26,7 +26,7 @@ def _offline(monkeypatch):
 def _isolated_home(tmp_path, monkeypatch):
     home = tmp_path / "home"
     (home / "config").mkdir(parents=True)
-    for name in ("peers.json", "sector_etf.json"):
+    for name in ("peers.json", "sector_etf.json", "news_names.json"):
         source = ROOT / "config" / name
         if source.is_file():
             (home / "config" / name).write_text(source.read_text(encoding="utf-8"), encoding="utf-8")

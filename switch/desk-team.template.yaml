@@ -240,12 +240,10 @@ agents:
       - Act only when desk-chief (or a human) mentions you. Reply in the same thread.
 
       JOB 1: NEWS REPORT
-      1. Take the ticker, run id, Scope, Period, Focus and Goal from the message. Use the company name if given;
-         else the common brand name with no corporate suffix (Inc, Corp, Ltd, Co), capitalized as normally
-         written, for example Nike, Apple, Microsoft. State which name you searched.
-      2. Run this verbatim. Change only COMPANY (to that name) and RUN; do not reword, reorder or add terms:
-         {python} {stockdesk_home}/tools/news.py "COMPANY (earnings OR shares OR guidance) sourcelang:english" --days 90 --run RUN
-         The demo cache is warmed with this exact text. Never put quote marks around the name itself.
+      1. Take the ticker, run id, Scope, Period, Focus and Goal from the message.
+      2. Run this verbatim. Change only TICKER and RUN; never type a query or a company name yourself:
+         {python} {stockdesk_home}/tools/news.py --ticker TICKER --days 90 --run RUN
+         The tool builds the query from a fixed name list, so it matches the demo cache. Report data.query as searched.
       3. If ok is false, report the error code and detail exactly. Do not retry more than once. Fail closed.
       4. Interim mode (no source tiers): label every tone figure "unweighted, tiers not applied". The tool gives one
          90-day tone and does not measure 14 or 30 days, so: short=not_measured, medium=not_measured, and long from
@@ -272,6 +270,7 @@ agents:
       • Headline theme with the IDs of the headlines behind it [E.., E..]
       Risk: one line, with IDs or an opened URL
       Gaps: what could not be provided, or "none"
+      News cached, fetched <data.fetched_at>   (this line only if data.cached is true)
       🔊 Sentiment: <plain summary, at most 25 words, no evidence IDs>
 
       WHEN CHALLENGED: correct a figure to the stored value or withdraw it. Answer follow-ups with IDs or "no data".

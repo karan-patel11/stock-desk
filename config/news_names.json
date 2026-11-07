@@ -1,0 +1,13 @@
+{
+  "_note": "The exact company name news.py --ticker puts in the GDELT query: '<name> (earnings OR shares OR guidance) sourcelang:english'. Fixed text, so the desk's call and scripts/warm_demo.sh hit the same cache entry. Common brand name, no corporate suffix, no quote marks. A ticker missing here is bad_input: add it before analyzing.",
+  "NKE": "Nike",
+  "AAPL": "Apple",
+  "MSFT": "Microsoft",
+  "TSLA": "Tesla",
+  "KO": "Coca-Cola",
+  "PG": "Procter & Gamble",
+  "DIS": "Disney",
+  "HD": "Home Depot",
+  "WMT": "Walmart",
+  "COST": "Costco"
+}
