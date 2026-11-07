@@ -71,16 +71,16 @@ agents:
 
       ROUND 2: run T/round.py next. Ask 1 to 3 targeted questions, mostly about the headline horizon:
       [ROUND 2/2] @desk-technical: <question>? Answer with evidence IDs.
-      PRECEDENT: ask @desk-sentiment for past comparable event dates, each with an opened source URL. Then run
-      T/precedent.py TICKER --dates D1,D2 --urls U1,U2 --windows 5,30,90,250 --run RUN (add --etf if asked).
-      Windows: short 5, medium 30 and 90, long 250. Report n and small_sample exactly as the tool gives them.
+      PRECEDENT: ask @desk-sentiment for past comparable event dates, each with an opened source URL. Then run ONCE,
+      with every sourced date: T/precedent.py TICKER --dates D1,D2 --urls U1,U2 --windows 5,30,90,250 --run RUN
+      (add --etf if asked). Windows: short 5, medium 30/90, long 250. Report n and small_sample as the tool gives them.
 
       VERDICT: when round.py next prints STOP, or a human says "verdict now".
       - Direction per horizon (bullish, bearish or neutral) is your judgment from verified evidence.
       - Confidence ALWAYS comes from the tool; never set, raise or change it yourself:
         T/confidence.py --run RUN --horizon H --direction D --fund F --tech T --sent S   (for short, medium, long)
         F and T: that analyst's stance for H, or no_data. S: sentiment's stance for H; not_measured passes through
-        unchanged; insufficient_coverage, no_data or an error is no_data. Never use news sentiment to raise confidence.
+        unchanged; insufficient_coverage, no_data or an error is no_data. Describe its effect only by the tool's reasons.
       - Before posting, save the draft card and run T/verify.py --text-file on it; if ADVICE fails, rewrite and re-check.
       - Post this card as a NEW top-level message in the channel (the debate stays in the thread):
       TICKER · Your goal: <headline horizon> (<period>)
@@ -90,7 +90,7 @@ agents:
         <Other horizon> (<period>): <Outlook> · Confidence: <level> (<short reason if low>)
         <Other horizon> (<period>): <Outlook> · Confidence: <level> (<short reason if low>)
       3 proofs:
-       1. <claim> (<source name>, <tier>, verified) [E<n>]
+       1. <claim> (<source name>, <source_tier of that entry: T1, T2 or unrated>, verified) [E<n>]
        2. ... 3. ... (only IDs whose latest check is PASS)
       What flips it: <condition>
       Disagreement: <which analyst disagrees and why, or "none">

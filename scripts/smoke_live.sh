@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 # Runs every data tool once against LIVE sources and prints a one-line summary per tool.
-# Usage: scripts/smoke_live.sh [TICKER] ["Company name"] [event-dates-comma-separated]
+# Usage: scripts/smoke_live.sh [TICKER] [event-dates-comma-separated]
+# News uses news.py --ticker (the name comes from config/news_names.json). It makes two GDELT requests; on demo day run
+# scripts/warm_demo.sh instead, as GDELT blocks for hours after refusals.
 # Needs: pip install -r requirements.txt, and SEC_USER_AGENT set in .env (your real contact email).
 # Precedent is skipped unless you pass event dates you have verified from an opened source.
 set -u
 cd "$(dirname "$0")/.."
-PY="${PYTHON:-python3}"
+if [ -n "${PYTHON:-}" ]; then PY="$PYTHON"; elif [ -x .venv/bin/python ]; then PY=.venv/bin/python; else PY=python3; fi
 EVHOME="${STOCKDESK_HOME:-$(pwd)}"
 TICKER="${1:-NKE}"
-NAME="${2:-Nike}"
-DATES="${3:-}"
+DATES="${2:-}"
+case "$DATES" in [0-9][0-9][0-9][0-9]-*) ;; *) DATES="${3:-}" ;; esac  # the old form passed a company name second
 
 summarize() {  # reads one JSON object on stdin
   "$PY" -c '
@@ -39,8 +41,8 @@ run_tool() {
 }
 run_tool tools/fund.py "$TICKER" --quarters 12
 run_tool tools/tech.py "$TICKER" --lookback 2y
-run_tool tools/news.py "$NAME" --days 30
-if [ -n "$DATES" ]; then run_tool tools/precedent.py "$TICKER" --dates "$DATES" --windows 5,30,90,250; else echo "== precedent.py skipped (pass verified event dates as the 3rd argument)"; fi
+run_tool tools/news.py --ticker "$TICKER" --days 90
+if [ -n "$DATES" ]; then run_tool tools/precedent.py "$TICKER" --dates "$DATES" --windows 5,30,90,250; else echo "== precedent.py skipped (pass verified event dates as the 2nd argument)"; fi
 echo "== verify.py (E1 must exist and match itself)"
 VAL="$("$PY" -c 'import json,sys; print(json.load(open(sys.argv[1]))["value"])' "$EVHOME/evidence/$RUN/E1.json" 2>/dev/null || true)"
 if [ -n "$VAL" ]; then "$PY" tools/verify.py E1 --value "$VAL" --run "$RUN" | summarize || FAILED=1; fi
