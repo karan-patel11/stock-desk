@@ -280,3 +280,64 @@ def test_torn_log_line_is_an_error(ledger):
     with pytest.raises(ToolError) as err:
         common.read_verifications(run)
     assert err.value.code == "source_unavailable"
+
+
+# ---------------- advice-word scan (report mode) ----------------
+
+def advice_report(run, text):
+    _, _, data = verify.main(["--text", text, "--run", run])
+    return data
+
+
+@pytest.mark.parametrize("text,phrase", [
+    ("We would buy here.", "buy"),
+    ("BUY now", "buy"),
+    ("Time to sell.", "sell"),
+    ("Our price target is high.", "price target"),
+    ("No price targets given.", "price targets"),
+    ("This looks good to buy.", "good to buy"),
+    ("A strong buy.", "strong buy"),
+    ("Investors should hold.", "should hold"),
+    ("Returns are guaranteed.", "guaranteed"),
+    ("No guarantee of anything.", "guarantee"),
+    ("Good  to\tBuy", "good to buy"),
+])
+def test_each_banned_phrase_fails(ledger, text, phrase):
+    run, _ = ledger
+    data = advice_report(run, text)
+    assert data["result"] == "FAIL" and data["advice"]["result"] == "FAIL"
+    assert [m["phrase"] for m in data["advice"]["matches"]] == [phrase]
+    record = common.latest_verifications(run)["ADVICE"]
+    assert record["result"] == "FAIL" and record["claimed"] == [phrase] and phrase in record["detail"]
+
+
+@pytest.mark.parametrize("text", [
+    "The sell-off deepened.",
+    "A selloff in retail stocks.",
+    "The buyback continues.",
+    "A buy-back was announced.",
+    "Sellers outnumbered buyers.",
+    "Shares hold above the 200-day average.",
+    "Analysts expect the trend to hold.",
+    "Research only, not financial advice.",
+])
+def test_allowed_words_pass(ledger, text):
+    run, _ = ledger
+    data = advice_report(run, text)
+    assert data["advice"] == {"result": "PASS", "matches": []} and data["result"] == "PASS"
+    assert common.latest_verifications(run)["ADVICE"]["result"] == "PASS"
+
+
+def test_advice_is_logged_but_not_in_the_pass_rate(ledger):
+    run, ids = ledger
+    data = advice_report(run, f"Revenue 12.4B [{ids['revenue']}]. A strong buy.")
+    assert data["result"] == "FAIL" and data["citations"]["display"] == "1/1"
+    assert data["citations"]["uncorrected"] == []
+    advice_report(run, f"Revenue 12.4B [{ids['revenue']}].")  # rewritten draft
+    assert common.latest_verifications(run)["ADVICE"]["result"] == "PASS"
+
+
+def test_single_check_mode_does_not_scan_or_log_advice(ledger):
+    run, ids = ledger
+    single(run, ids["revenue"], "12.4B")
+    assert "ADVICE" not in common.latest_verifications(run)

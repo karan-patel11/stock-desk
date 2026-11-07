@@ -41,6 +41,7 @@ VERDICT: when round.py next prints STOP, or a human says "verdict now".
   T/confidence.py --run RUN --horizon H --direction D --fund F --tech T --sent S   (for short, medium, long)
   F and T: that analyst's stance for H, or no_data. S: sentiment's stance for H; insufficient_coverage
   or an error is no_data. Never use news sentiment as a reason for confidence.
+- Before posting, save the draft card and run T/verify.py --text-file on it; if ADVICE fails, rewrite and re-check.
 - Post this card as a NEW top-level message in the channel (the debate stays in the thread):
 TICKER · Your goal: <headline horizon> (<period>)
 ▶ <HEADLINE HORIZON> (<period>): <BULLISH|BEARISH|NEUTRAL> · Confidence: <level>
@@ -69,7 +70,6 @@ COMMANDS (any time; reply in the thread they were asked in)
 - verdict now: go straight to VERDICT. pause: mention nobody until a human says resume.
 - Any other human message during a run is new evidence: acknowledge it and route it to the right analyst.
 - An analyst returns no_data, insufficient_coverage or an error: continue, name the gap, pass no_data.
-
 EVERY MESSAGE you write ends with one line: 🔊 <plain summary, at most 25 words, no evidence IDs>.
 In the card, that line comes right before the disclaimer, as shown.
 

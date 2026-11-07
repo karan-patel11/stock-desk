@@ -13,6 +13,11 @@ never hidden by another number citing the same ID. When a line cites several IDs
 logged against the cited IDs that no other number on that line matched (all of them if none qualifies). Uncited numbers have no ID and are not logged;
 they are still returned in data.uncited. data.citations is the run's pass rate after this check.
 
+Advice-word scan (report mode only): whole-word or whole-phrase, case-insensitive matches of buy, sell,
+"price target(s)", "good to buy", "strong buy", "should hold", guaranteed, guarantee(s) make the report FAIL,
+naming each phrase. Not matched: sell-off, selloff, buyback, buy-back, sellers, buyers, or "hold" on its own.
+Each report scan is logged once as id ADVICE (PASS or FAIL); ADVICE never counts in the citation pass rate.
+
 Matching rules (all done in code, never by an LLM):
 - The given figure is normalized: 8.1% -> 0.081, 2.0 pts -> 0.02, 12.4B -> 12.4e9.
 - A bare number is compared as written. 8.1 is NOT treated as 8.1%.
@@ -56,6 +61,12 @@ _IGNORE = [
     re.compile(r"\b\d+[- ](?:day|week|month|year|session|trading)s?\b", re.IGNORECASE),
     re.compile(r"\b\d+\s*(?:words?|events?|analysts?|rounds?)\b", re.IGNORECASE),
 ]
+# Longest phrases first, so "good to buy" is reported as itself, not as "buy". A hyphen or letter on either side
+# means a different word (sell-off, buyback, buy-back, sellers), so it does not match.
+_ADVICE = re.compile(
+    r"(?<![\w-])(good\s+to\s+buy|strong\s+buy|price\s+targets?|should\s+hold|guaranteed|guarantees?|buy|sell)(?![\w-])",
+    re.IGNORECASE,
+)
 _NEGATIVE_WORD = re.compile(
     r"\b(?:down|decline[ds]?|declining|fell|fall(?:s|ing)?|drop(?:s|ped|ping)?|decrease[ds]?|"
     r"contract(?:s|ed|ion)?|shrank|shrink(?:s|ing)?|lower|cut|slid|slipped|lost)\b",
@@ -156,6 +167,14 @@ def _looks_like_claim(digits: str, has_suffix: bool) -> bool:
     return "." in clean or float(clean) >= 1000
 
 
+def advice_matches(text: str) -> list[dict[str, str]]:
+    found = []
+    for raw_line in text.splitlines():
+        for match in _ADVICE.finditer(raw_line):
+            found.append({"phrase": " ".join(match.group(1).lower().split()), "line": raw_line.strip()})
+    return found
+
+
 def verify_report(run: str, text: str, tol: float | None) -> tuple[list[str], dict[str, Any]]:
     passes: list[dict[str, Any]] = []
     failures: list[dict[str, Any]] = []
@@ -233,7 +252,8 @@ def verify_report(run: str, text: str, tol: float | None) -> tuple[list[str], di
         failures.extend(line_failures)
 
     missing = [i for i in cited_all if entry_for(i) is None]
-    result = "FAIL" if (failures or uncited or missing) else "PASS"
+    advice = advice_matches(text)
+    result = "FAIL" if (failures or uncited or missing or advice) else "PASS"
     # Log: passes first, then failures, so a failure is the latest record for its ID.
     for item in passes:
         stored = entries[item["id"]]
@@ -248,6 +268,10 @@ def verify_report(run: str, text: str, tol: float | None) -> tuple[list[str], di
                                        f"report: {item['reason']}; stored {stored['value']} {stored['unit']}")
     for evidence_id in missing:
         common.append_verification(run, evidence_id, None, "FAIL", "report: not_found: no such evidence ID in this run")
+    phrases = sorted({m["phrase"] for m in advice})
+    common.append_verification(run, common.ADVICE_ID, phrases or None, "FAIL" if advice else "PASS",
+                               ("advice words: " + "; ".join(f"{m['phrase']!r} in: {m['line']}" for m in advice))
+                               if advice else "report: no advice words")
     found_ids = [i for i in cited_all if entries.get(i) is not None]
     return found_ids, {
         "result": result,
@@ -256,6 +280,7 @@ def verify_report(run: str, text: str, tol: float | None) -> tuple[list[str], di
         "failed": failures,
         "uncited": uncited,
         "missing_ids": missing,
+        "advice": {"result": "FAIL" if advice else "PASS", "matches": advice},
         "warnings": warnings,
     }
 

@@ -381,13 +381,18 @@ def list_evidence(run: str) -> list[dict[str, Any]]:
 
 VERIFY_RESULTS = ("PASS", "FAIL", "WITHDRAWN")
 VERIFICATIONS_FILE = "verifications.jsonl"
+ADVICE_ID = "ADVICE"  # verify.py's advice-word scan; logged here but never part of the citation pass rate
+
+
+def _log_id_ok(log_id: str) -> bool:
+    return log_id == ADVICE_ID or bool(EVIDENCE_ID_RE.match(log_id or ""))
 
 
 def append_verification(run: str, evidence_id: str, claimed: Any, result: str, detail: str) -> dict[str, Any]:
     """Append one check to the run's log. One write of one line, under an exclusive lock, then fsync."""
     if result not in VERIFY_RESULTS:
         raise ToolError("bad_input", f"result must be one of {VERIFY_RESULTS}")
-    if not EVIDENCE_ID_RE.match(evidence_id or ""):
+    if not _log_id_ok(evidence_id):
         raise ToolError("bad_input", f"not an evidence ID: {evidence_id!r}")
     run_dir = evidence_root() / run
     if not run_dir.is_dir():
@@ -421,7 +426,7 @@ def read_verifications(run: str) -> list[dict[str, Any]]:
             record = json.loads(line)
         except json.JSONDecodeError as exc:
             raise ToolError("source_unavailable", f"{VERIFICATIONS_FILE} line {number} is not JSON") from exc
-        if record.get("result") not in VERIFY_RESULTS or not EVIDENCE_ID_RE.match(str(record.get("id", ""))):
+        if record.get("result") not in VERIFY_RESULTS or not _log_id_ok(str(record.get("id", ""))):
             raise ToolError("source_unavailable", f"{VERIFICATIONS_FILE} line {number} has no valid id/result")
         records.append(record)
     return records
@@ -444,8 +449,8 @@ def citation_summary(run: str) -> dict[str, Any]:
     """Citation pass rate: among IDs with at least one check, minus those whose latest result is WITHDRAWN,
     the share whose latest result is PASS. An uncorrected failure is an ID whose latest result is FAIL;
     a FAIL followed by a PASS or WITHDRAWN counts as corrected."""
-    latest = latest_verifications(run)
-    ever_failed = {r["id"] for r in read_verifications(run) if r["result"] == "FAIL"}
+    latest = {i: r for i, r in latest_verifications(run).items() if i != ADVICE_ID}
+    ever_failed = {r["id"] for r in read_verifications(run) if r["result"] == "FAIL" and r["id"] != ADVICE_ID}
     order = sorted(latest, key=_id_number)
     counted = [i for i in order if latest[i]["result"] != "WITHDRAWN"]
     passed = [i for i in counted if latest[i]["result"] == "PASS"]
