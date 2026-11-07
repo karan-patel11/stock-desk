@@ -70,9 +70,19 @@ The card's three proofs, checked against the ledger:
 - The run took about seven minutes (04:31 to 04:38 UTC). No token or secret was entered in chat, written to a file,
   or committed.
 
+## After the run (2026-11-07, 05:20 UTC)
+
+- `@desk-chief explain E159`: correct fact, value -0.043259, source SEC EDGAR, tier T1, PASS, cited by
+  desk-fundamental in round 1.
+- `@desk-chief evidence`: the full 369-row table, posted as an attached file. Its rows match the local ledger.
+- The table showed a label bug: E168 read "death = SMA50 crossed above SMA200". `tools/tech.py` wrote "above" for
+  every cross; fixed in commit 875b68c (a death cross is SMA50 crossing below). The value and date were right; the
+  card did not cite E168.
+
 ## Not tested in this run
 
-- `@desk-chief explain E<n>`, `@desk-chief evidence`, `ask`, `pause` / `resume`, and a human interrupt mid-run.
+- `ask`, `pause` / `resume`, and a human interrupt mid-run.
 - The `chief` alias (not set) and the updated room instructions and `desk-rules` document (not applied).
-- `!list-documents` after the run, and the content of the saved `verdict-NKE-2026-11-07` document.
+- The content of the saved `verdict-NKE-2026-11-07` document (`!list-documents` lists it, with the description
+  "medium-term Bearish (confidence high, from the tool)").
 - Sentiment with a warmed cache and a real 90-day tone.
