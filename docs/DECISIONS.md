@@ -32,12 +32,21 @@ Locked on 2026-11-06 (change prompt for the 2026-11-07 submission). Status says 
 - GDELT calls are spaced at least 5.5 s apart across processes, cached, and return `rate_limited` on HTTP 429 without
   retrying.
 
-## Sentiment (Phase 2, blocked)
+## Sentiment (Phase 2, deferred)
 
-- Weighted news tone by source tier (`config/source_tiers.json`, curated, editable), headline-only factor for paywalled
-  outlets, de-duplication of reposts, 14/30/90-day windows, "insufficient_coverage" below a minimum weight.
-- Blocked until a live GDELT check shows per-article tone exists. If it does not, news.py keeps its current output,
-  labelled "unweighted, tiers not applied", and the fallback is decided by the project owner.
+- **Full Phase 2 deferred: GDELT has no per-article tone (tested, ToneChart lists ~29% of articles in integer bins).**
+  The design was tone weighted by source tier (`config/source_tiers.json`, curated, editable), a headline-only factor
+  for paywalled outlets, de-duplication of reposts, 14/30/90-day windows, and "insufficient_coverage" below a minimum
+  weight. It needs a tone for every article.
+- The test (2026-11-07, query `Nike`, 30 days): ArtList JSON has no tone field documented. ToneChart returned 24 integer
+  bins (-12 to +11) covering 504 articles. Each bin lists at most 10 articles, with only `title` and `url`: 145 of
+  504 were listed. A listed article's tone is its bin, not an exact value.
+- A smaller "trusted sources only" version was considered: one ToneChart per tier, with a `domainis:` OR filter,
+  combined by tier weight. **Not built:** the one test request for the domain filter was refused (HTTP 429), so
+  whether GDELT accepts `domainis:` joined with OR is untested.
+- What runs instead: news.py's interim output. Sentiment reports one 90-day GDELT average tone over all matching
+  articles, labelled "unweighted, tiers not applied". short and medium are insufficient_coverage, and long reads the
+  tone at -1.0 / +1.0.
 
 ## Horizons and output (Phase 3, built)
 
@@ -76,6 +85,9 @@ Locked on 2026-11-06 (change prompt for the 2026-11-07 submission). Status says 
 - **A derived Q4 may combine filings from different dates:** the fiscal year from the latest 10-K minus the nine
   months from an earlier 10-Q. Both inputs are cited.
 - **Amended filings (10-K/A, 10-Q/A) are ignored**, so a restatement filed only as an amendment is missed.
+- **EPS can show stale for a few weeks after the 10-K (no Q4 EPS).** After the annual filing the latest EPS is Q3's,
+  and it can pass the 200-day freshness limit before the next 10-Q (for NKE: mid-September to early October).
+- **Sentiment is unweighted.** No source tiers, no de-duplication, off-topic articles included (see Sentiment above).
 - **Minor RSI/ATR drift from Wilder seeding:** the values move slightly with the lookback (ATR(14) for NKE: 1.241715
   on 1 year of bars, 1.241751 on 2 years).
 

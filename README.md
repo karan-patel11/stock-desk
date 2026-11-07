@@ -24,9 +24,20 @@ The tools run once per analysis with the widest settings (`fund.py --quarters 12
 `news.py --days 90`, `precedent.py --windows 5,30,90,250`). Every horizon reads the same evidence. The goal only picks
 which horizon is the headline (`all` means medium).
 
-Until the news source tiers are built, sentiment reports one 90-day tone labelled "unweighted, tiers not applied".
-Short and medium therefore get `insufficient_coverage` from sentiment, which counts as "no data" and lowers their
-confidence by one level.
+## Sentiment
+
+Sentiment reports one number: GDELT's average tone over the last 90 days for the company's query, labelled
+**"unweighted, tiers not applied"**. It covers every matching article from every outlet, including off-topic ones.
+It is not weighted by source and not de-duplicated, and it gives no 14- or 30-day window. So:
+
+- short and medium get `insufficient_coverage` from sentiment, which counts as "no data" and lowers their confidence
+  by one level;
+- long reads the 90-day tone: at or below -1.0 negative, at or above +1.0 positive, otherwise neutral.
+
+News tone can only lower confidence, never raise it. Tone weighted by source tier was designed but is **deferred**:
+it needs a tone for every article, and GDELT does not provide one. Its ToneChart lists only about 29% of articles, in
+whole-number tone bins (`docs/DECISIONS.md`, Sentiment). The sentiment agent still cites individual headlines by
+evidence ID, and may describe an article only after opening it.
 
 **Research only, not financial advice.** The desk never says buy or sell and never gives price targets.
 
@@ -224,18 +235,18 @@ Every evidence entry has a `source_tier`, strongest first:
 |---|---|---|
 | T1 | Regulatory or primary: legally accountable filings (SEC EDGAR) | `fund.py` |
 | T2 | Market data: Yahoo Finance via yfinance (unofficial, disclosed). Never called official | `tech.py`, `precedent.py` |
-| T3 | News: original reporting with named editors and a public corrections policy | news (once tiers apply) |
-| T4 | News: mostly syndicated, aggregated or contributor content, or narrow trade press | news (once tiers apply) |
-| company_statement | Issued by the company itself: used for event dates, never for sentiment | news (once tiers apply) |
-| excluded | Opinion, promotional, user-generated or auto-generated content, and all social media | news (once tiers apply) |
+| T3 | News: original reporting with named editors and a public corrections policy | not applied (deferred) |
+| T4 | News: mostly syndicated, aggregated or contributor content, or narrow trade press | not applied (deferred) |
+| company_statement | Issued by the company itself: used for event dates, never for sentiment | not applied (deferred) |
+| excluded | Opinion, promotional, user-generated or auto-generated content, and all social media | not applied (deferred) |
 | unrated | Anything not on a list, plus our own curated config (peers, sector ETF) and caller-supplied event dates | several |
 
 A derived entry (growth, margins, ratios, excess returns) takes the **weakest** tier among its inputs. A precedent excess
-return is therefore `unrated`, because one input is the event date the sentiment agent read on a web page. Until the news
-tiers are applied, every `news.py` entry is `unrated` and sentiment output is unweighted.
+return is therefore `unrated`, because one input is the event date the sentiment agent read on a web page. News tiers
+are not applied (see Sentiment), so every `news.py` entry is `unrated`.
 
-The news lists and weights will live in `config/source_tiers.json`. They are **our curated judgment, not an industry
-standard**, and are meant to be edited. Entries written before tiers existed have no `source_tier`; they are never
+The T3/T4 definitions above are **our curated judgment, not an industry standard**. No news domain lists ship with the
+repo while tier weighting is deferred. Entries written before tiers existed have no `source_tier`; they are never
 rewritten, and they show as "not recorded".
 
 ## Our audit
