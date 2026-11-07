@@ -32,7 +32,8 @@ def _isolated_home(tmp_path, monkeypatch):
             (home / "config" / name).write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
     monkeypatch.setenv("STOCKDESK_HOME", str(home))
     monkeypatch.setenv("SEC_USER_AGENT", "StockDeskTest tester@stockdesk.test")
-    for name in ("STOCKDESK_CACHE_TTL", "STOCKDESK_NEWS_CACHE_TTL", "STOCKDESK_MAX_FUND_AGE_DAYS"):   # a demo-day shell must not change results
+    for name in ("STOCKDESK_CACHE_TTL", "STOCKDESK_NEWS_CACHE_TTL", "STOCKDESK_MAX_FUND_AGE_DAYS",
+                 "STOCKDESK_CACHE_TTL_HOURS"):   # a demo-day shell must not change results
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setattr(common, "_sleep", lambda seconds: None)
     common._last_request.clear()

@@ -252,3 +252,47 @@ def test_pacing_holds_across_processes(gdelt, run_id, monkeypatch):
 def test_news_entries_are_unrated_until_tiers_apply(gdelt, run_id):
     run, ids, _ = news.main(["Acme Corp"])
     assert {common.read_evidence(run, i)["source_tier"] for i in ids} == {"unrated"}
+
+
+
+def test_cached_response_is_disclosed_with_fetched_at(gdelt, run_id, monkeypatch):
+    calls, _ = gdelt
+    fresh = news.main(["Acme Corp"])[2]
+    assert fresh["cached"] is False and fresh["from_cache"] is False
+    assert [r["mode"] for r in fresh["responses"]] == ["artlist", "timelinetone"]
+    first_fetch = fresh["fetched_at"]
+    count = len(calls)
+    later = news.main(["Acme Corp"])[2]
+    assert len(calls) == count                                   # no new request
+    assert later["cached"] is True and later["fetched_at"] == first_fetch
+    assert all(r["cached"] for r in later["responses"])
+    for entry_id in [a["id"] for a in later["articles"]]:
+        assert common.read_evidence(run_id, entry_id)["retrieved_at"] == first_fetch
+
+
+def test_partly_cached_still_says_cached(gdelt, run_id):
+    calls, state = gdelt
+    state["tone_status"] = 500                                   # tone fails, articles get cached
+    news.main(["Acme Corp"])
+    state["tone_status"] = 200
+    data = news.main(["Acme Corp"])[2]
+    assert data["cached"] is True and data["from_cache"] is False
+    assert {r["mode"]: r["cached"] for r in data["responses"]} == {"artlist": True, "timelinetone": False}
+
+
+def test_cache_ttl_hours(gdelt, run_id, monkeypatch, _isolated_home):
+    monkeypatch.setenv("STOCKDESK_CACHE_TTL_HOURS", "24")
+    assert news.news_cache_ttl() == 86400.0
+    monkeypatch.setenv("STOCKDESK_NEWS_CACHE_TTL", "600")        # seconds setting wins
+    assert news.news_cache_ttl() == 600.0
+    monkeypatch.delenv("STOCKDESK_NEWS_CACHE_TTL")
+    calls, _ = gdelt
+    news.main(["Acme Corp"])
+    warmed = len(calls)
+    _age_cache(_isolated_home, 20 * 3600)                        # 20 hours old, inside 24 hours
+    assert news.main(["Acme Corp"])[2]["cached"] is True and len(calls) == warmed
+    for bad in ("0", "-1", "a day", "nan"):
+        monkeypatch.setenv("STOCKDESK_CACHE_TTL_HOURS", bad)
+        with pytest.raises(ToolError) as err:
+            news.news_cache_ttl()
+        assert err.value.code == "bad_input"

@@ -10,7 +10,10 @@ Honest limits, built in:
   STOCKDESK_CACHE_TTL does not apply to news). HTTP 429 or a rate-limit body returns rate_limited at once,
   without retrying: every refused request restarts GDELT's block.
   A 200 response whose body is a rate-limit message is never cached. data.from_cache is true only when
-  every GDELT response used came from the cache.
+  every GDELT response used came from the cache. data.cached is true when ANY did, data.fetched_at is when the
+  oldest response used was fetched, and data.responses lists each request's cached flag and fetched_at.
+  Cache: <STOCKDESK_HOME>/cache/<sha256 of "GET " + the full request URL>.json, so the key is the exact query
+  text and --days. STOCKDESK_CACHE_TTL_HOURS (hours) sets reuse for news; STOCKDESK_NEWS_CACHE_TTL (seconds) wins.
 - GDELT indexes roughly the last 3 months, so --days is capped at 90.
 - GDELT returns headlines only. Anyone citing what an article SAYS must open it first.
 - Average tone is a second request (timelinetone). If that request fails or has an unexpected
@@ -34,7 +37,8 @@ GDELT_INTERVAL = 6.0  # GDELT allows 1 request per 5 s; at least 5.5 s is requir
 GDELT_ATTEMPTS = 3     # retries cover network and 5xx errors only; a rate limit fails at once
 GDELT_RATE_LIMIT_WAIT = 15.0
 CACHE_TTL = 3600.0
-CACHE_TTL_ENV = "STOCKDESK_NEWS_CACHE_TTL"
+CACHE_TTL_ENV = "STOCKDESK_NEWS_CACHE_TTL"        # seconds; wins when set
+CACHE_TTL_HOURS_ENV = "STOCKDESK_CACHE_TTL_HOURS"  # hours; news.py only (other tools: STOCKDESK_CACHE_TTL)
 MAX_ARTICLES = 20
 SOURCE = "GDELT DOC 2.0"
 STOPWORDS = frozenset("""
@@ -46,14 +50,24 @@ very what when where which while will with would your inc corp company news toda
 
 
 def news_cache_ttl() -> float:
-    """Seconds a GDELT response stays cached: STOCKDESK_NEWS_CACHE_TTL, else one hour.
+    """Seconds a GDELT response is reused: STOCKDESK_NEWS_CACHE_TTL (seconds), else STOCKDESK_CACHE_TTL_HOURS
+    (hours), else one hour.
 
-    Kept apart from STOCKDESK_CACHE_TTL on purpose. On demo day, set it high (for example 86400)
+    Kept apart from STOCKDESK_CACHE_TTL on purpose. On demo day, set it high (for example 24 hours)
     and warm the cache with the sentiment agent's exact query. A bad value is an error, not ignored.
     """
     raw = common.env(CACHE_TTL_ENV)
     if not raw:
-        return CACHE_TTL
+        hours_raw = common.env(CACHE_TTL_HOURS_ENV)
+        if not hours_raw:
+            return CACHE_TTL
+        try:
+            hours = float(hours_raw)
+        except ValueError:
+            hours = math.nan
+        if not math.isfinite(hours) or hours <= 0:
+            raise ToolError("bad_input", f"{CACHE_TTL_HOURS_ENV} must be a positive number of hours, got {hours_raw!r}")
+        return hours * 3600.0
     try:
         seconds = float(raw)
     except ValueError:
@@ -163,12 +177,14 @@ def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
 
     tone_row = None
     from_cache = [articles_result.from_cache]
+    responses = [{"mode": "artlist", "cached": articles_result.from_cache, "fetched_at": articles_result.fetched_at}]
     try:
         tone_result = common.http_get(
             GDELT_URL, params={**base, "mode": "timelinetone"}, ttl=ttl,
             min_interval=GDELT_INTERVAL, attempts=GDELT_ATTEMPTS,
             rate_limit_wait=GDELT_RATE_LIMIT_WAIT, retry_rate_limited=False, validate=_validate_body)
         from_cache.append(tone_result.from_cache)
+        responses.append({"mode": "timelinetone", "cached": tone_result.from_cache, "fetched_at": tone_result.fetched_at})
         mean_tone, points, first, last = parse_tone(tone_result.text)
         entry = common.write_evidence(
             run, tool="news.py", fact=f"Average news tone, query {query!r}, last {args.days} days",
@@ -203,6 +219,9 @@ def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
         "query": query, "days": args.days, "retrieved_at": retrieved_at, "articles": article_rows,
         "average_tone": tone_row, "keywords": keywords_row, "unavailable": unavailable,
         "from_cache": all(from_cache),  # true only if every GDELT response used came from the local cache
+        "cached": any(from_cache),      # true if ANY response used came from the cache: disclose it
+        "fetched_at": min(r["fetched_at"] for r in responses),  # when the oldest response used was fetched
+        "responses": responses,
         "note": "GDELT returns headlines only. Open an article before citing what it says.",
     }
     return run, ids, data

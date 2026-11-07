@@ -170,7 +170,7 @@ GDELT often rate limits for minutes at a time, and a refused call means a sentim
 first:
 
 ```bash
-# in .env: STOCKDESK_NEWS_CACHE_TTL=86400
+# in .env: STOCKDESK_CACHE_TTL_HOURS=24   (or STOCKDESK_NEWS_CACHE_TTL=86400)
 scripts/warm_demo.sh NKE Nike
 ```
 
@@ -195,8 +195,11 @@ visible. Clear the variable after the demo.
   close N sessions after base. Excess return is stock minus sector ETF, both total-return adjusted. Fewer than 3 events sets
   `small_sample`. Every event needs a source URL that the sentiment agent actually opened.
 - **News** is headlines only (GDELT, roughly the last 3 months, one request per 5 seconds). The sentiment agent may only
-  describe an article it opened. Responses are cached for an hour; `STOCKDESK_NEWS_CACHE_TTL` (seconds) overrides that,
-  and the global `STOCKDESK_CACHE_TTL` does not apply to news. There is still no stale fallback: an expired entry is
+  describe an article it opened. Responses are cached in `cache/` under a hash of the full request URL (so the exact
+  query text and `--days`) and reused for an hour. `STOCKDESK_CACHE_TTL_HOURS` (hours) or `STOCKDESK_NEWS_CACHE_TTL`
+  (seconds, wins if both are set) changes that; the global `STOCKDESK_CACHE_TTL` does not apply to news. A reused
+  response is disclosed: `data.cached` is true, `data.fetched_at` says when it was fetched, and every evidence entry
+  keeps that original `retrieved_at`. There is still no stale fallback: an expired entry is
   fetched again, and if GDELT refuses, the tool returns an error.
 - `config/peers.json` and `config/sector_etf.json` are small curated lists for demo tickers. An unmapped ticker needs `--etf`.
   Review them before relying on them.
