@@ -2,8 +2,16 @@
 """verify.py: check numbers against the evidence ledger.
 
 Single check:  verify.py E12 --value 8.1% [--tol 0.005] [--run RUN]
+Withdrawal:    verify.py E12 --withdraw [--run RUN]           (an analyst withdrew the claim citing E12)
 Report check:  verify.py --text-file report.txt [--run RUN]     (use - for stdin)
                verify.py --text "report text" [--run RUN]
+
+Every check is appended to evidence/<run>/verifications.jsonl (one line per evidence ID checked:
+id, claimed, result PASS|FAIL|WITHDRAWN, detail, checked_at). Evidence entries are never changed.
+In report mode the PASS lines are written before the FAIL lines, so a failed number in a report is
+never hidden by another number citing the same ID. When a line cites several IDs, a failed number is
+logged against the cited IDs that no other number on that line matched (all of them if none qualifies). Uncited numbers have no ID and are not logged;
+they are still returned in data.uncited. data.citations is the run's pass rate after this check.
 
 Matching rules (all done in code, never by an LLM):
 - The given figure is normalized: 8.1% -> 0.081, 2.0 pts -> 0.02, 12.4B -> 12.4e9.
@@ -114,9 +122,13 @@ def verify_single(run: str, evidence_id: str, value: str, tol: float | None) -> 
     quantity = parse_quantity(value)
     entry = common.read_evidence(run, evidence_id)
     if entry is None:
+        common.append_verification(run, evidence_id, value, "FAIL", "not_found: no such evidence ID in this run")
         return [], {"result": "FAIL", "reason": "not_found", "id": evidence_id, "given": value}
     ok, reason = _matches(quantity, entry, tol)
     stored = entry["value"]
+    common.append_verification(
+        run, evidence_id, value, "PASS" if ok else "FAIL",
+        f"matches stored {stored} {entry['unit']}" if ok else f"{reason}: stored {stored} {entry['unit']}")
     return [evidence_id], {
         "result": "PASS" if ok else "FAIL",
         "reason": None if ok else reason,
@@ -170,6 +182,8 @@ def verify_report(run: str, text: str, tol: float | None) -> tuple[list[str], di
             if evidence_id not in cited_all:
                 cited_all.append(evidence_id)
         scan = _mask(_CITE.sub(lambda m: " " * len(m.group(0)), line))
+        line_matched: set[str] = set()
+        line_failures: list[dict[str, Any]] = []
         for match in _NUM_IN_TEXT.finditer(scan):
             digits = match.group("num")
             if not _looks_like_claim(digits, bool(match.group("suf"))):
@@ -201,20 +215,39 @@ def verify_report(run: str, text: str, tol: float | None) -> tuple[list[str], di
                         note = "text says the figure fell but the stored value is positive"
                     break
             if matched_id:
+                line_matched.add(matched_id)
                 passes.append({"number": token, "id": matched_id})
                 if note:
                     warnings.append({"number": token, "line": line, "id": matched_id, "warning": note})
             else:
-                failures.append({
+                line_failures.append({
                     "number": token,
                     "line": line,
                     "cited": cited,
                     "reason": "no cited ID holds this value" if found else "cited IDs not found",
                     "stored": [{"id": e["id"], "value": e["value"], "unit": e["unit"], "fact": e["fact"]} for e in found],
                 })
+        for item in line_failures:
+            # Blame the cited IDs that no other number on this line matched; if none, blame them all.
+            item["blamed"] = [i for i in item["cited"] if i not in line_matched] or list(item["cited"])
+        failures.extend(line_failures)
 
     missing = [i for i in cited_all if entry_for(i) is None]
     result = "FAIL" if (failures or uncited or missing) else "PASS"
+    # Log: passes first, then failures, so a failure is the latest record for its ID.
+    for item in passes:
+        stored = entries[item["id"]]
+        common.append_verification(run, item["id"], item["number"], "PASS",
+                                   f"report: matches stored {stored['value']} {stored['unit']}")
+    for item in failures:
+        for evidence_id in item["blamed"]:
+            stored = entries.get(evidence_id)
+            if stored is None:
+                continue  # logged once below as not_found
+            common.append_verification(run, evidence_id, item["number"], "FAIL",
+                                       f"report: {item['reason']}; stored {stored['value']} {stored['unit']}")
+    for evidence_id in missing:
+        common.append_verification(run, evidence_id, None, "FAIL", "report: not_found: no such evidence ID in this run")
     found_ids = [i for i in cited_all if entries.get(i) is not None]
     return found_ids, {
         "result": result,
@@ -242,6 +275,7 @@ def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
     parser = common.ContractParser(prog="verify.py", description="Verify numbers against the evidence ledger.")
     parser.add_argument("evidence_id", nargs="?", help="e.g. E12 (single check; needs --value)")
     parser.add_argument("--value", help="figure to check, e.g. 8.1%% or 12.4B or 0.081")
+    parser.add_argument("--withdraw", action="store_true", help="record that the claim citing EVIDENCE_ID was withdrawn")
     parser.add_argument("--tol", type=float, default=None, help="extra relative tolerance on the stored value, e.g. 0.005")
     parser.add_argument("--text", default=None, help="report text to check")
     parser.add_argument("--text-file", default=None, help="file with report text, or - for stdin")
@@ -252,13 +286,21 @@ def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
         raise ToolError("bad_input", "give exactly one of: EVIDENCE_ID with --value, --text, or --text-file")
     if args.tol is not None and not (0 <= args.tol < 1):
         raise ToolError("bad_input", "--tol must be between 0 and 1")
+    if args.withdraw and (args.evidence_id is None or args.value is not None or args.tol is not None):
+        raise ToolError("bad_input", "--withdraw takes an EVIDENCE_ID only (no --value, --tol, --text)")
     run = common.resolve_run(args.run)
-    if args.evidence_id is not None:
+    if args.withdraw:
+        evidence_id = args.evidence_id.strip()
+        record = common.append_verification(run, evidence_id, None, "WITHDRAWN", "claim withdrawn by the analyst")
+        evidence = [evidence_id] if common.read_evidence(run, evidence_id) else []
+        data = {"result": "WITHDRAWN", "id": evidence_id, "checked_at": record["checked_at"]}
+    elif args.evidence_id is not None:
         if args.value is None:
             raise ToolError("bad_input", "a single check needs --value")
         evidence, data = verify_single(run, args.evidence_id.strip(), args.value, args.tol)
     else:
         evidence, data = verify_report(run, _read_text(args), args.tol)
+    data["citations"] = common.citation_summary(run)
     return run, evidence, data
 
 

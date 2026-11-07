@@ -376,6 +376,90 @@ def list_evidence(run: str) -> list[dict[str, Any]]:
 
 
 # --------------------------------------------------------------------------
+# Verification log: evidence/<run>/verifications.jsonl (append-only; entries are never edited)
+# --------------------------------------------------------------------------
+
+VERIFY_RESULTS = ("PASS", "FAIL", "WITHDRAWN")
+VERIFICATIONS_FILE = "verifications.jsonl"
+
+
+def append_verification(run: str, evidence_id: str, claimed: Any, result: str, detail: str) -> dict[str, Any]:
+    """Append one check to the run's log. One write of one line, under an exclusive lock, then fsync."""
+    if result not in VERIFY_RESULTS:
+        raise ToolError("bad_input", f"result must be one of {VERIFY_RESULTS}")
+    if not EVIDENCE_ID_RE.match(evidence_id or ""):
+        raise ToolError("bad_input", f"not an evidence ID: {evidence_id!r}")
+    run_dir = evidence_root() / run
+    if not run_dir.is_dir():
+        raise ToolError("bad_input", f"run {run} not found under evidence/")
+    record = {"id": evidence_id, "claimed": plain(claimed), "result": result, "detail": detail,
+              "checked_at": utc_iso()}
+    line = (json.dumps(record, sort_keys=False) + "\n").encode("utf-8")
+    fd = os.open(run_dir / VERIFICATIONS_FILE, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o644)
+    try:
+        if fcntl is not None:
+            fcntl.flock(fd, fcntl.LOCK_EX)
+        os.write(fd, line)
+        os.fsync(fd)
+    finally:
+        if fcntl is not None:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+        os.close(fd)
+    return record
+
+
+def read_verifications(run: str) -> list[dict[str, Any]]:
+    """Every check in log order. A torn or unreadable line is an error, not skipped silently."""
+    path = evidence_root() / run / VERIFICATIONS_FILE
+    if not path.is_file():
+        return []
+    records = []
+    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        if not line.strip():
+            continue
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise ToolError("source_unavailable", f"{VERIFICATIONS_FILE} line {number} is not JSON") from exc
+        if record.get("result") not in VERIFY_RESULTS or not EVIDENCE_ID_RE.match(str(record.get("id", ""))):
+            raise ToolError("source_unavailable", f"{VERIFICATIONS_FILE} line {number} has no valid id/result")
+        records.append(record)
+    return records
+
+
+def latest_verifications(run: str) -> dict[str, dict[str, Any]]:
+    """The latest record per evidence ID (later lines win)."""
+    latest: dict[str, dict[str, Any]] = {}
+    for record in read_verifications(run):
+        latest[record["id"]] = record
+    return latest
+
+
+def _id_number(evidence_id: str) -> int:
+    match = EVIDENCE_ID_RE.match(evidence_id)
+    return int(match.group(1)) if match else 0
+
+
+def citation_summary(run: str) -> dict[str, Any]:
+    """Citation pass rate: among IDs with at least one check, minus those whose latest result is WITHDRAWN,
+    the share whose latest result is PASS. An uncorrected failure is an ID whose latest result is FAIL;
+    a FAIL followed by a PASS or WITHDRAWN counts as corrected."""
+    latest = latest_verifications(run)
+    ever_failed = {r["id"] for r in read_verifications(run) if r["result"] == "FAIL"}
+    order = sorted(latest, key=_id_number)
+    counted = [i for i in order if latest[i]["result"] != "WITHDRAWN"]
+    passed = [i for i in counted if latest[i]["result"] == "PASS"]
+    uncorrected = [i for i in counted if latest[i]["result"] == "FAIL"]
+    return {
+        "checked": len(counted), "passed": len(passed), "display": f"{len(passed)}/{len(counted)}",
+        "uncorrected": uncorrected,
+        "corrected": [i for i in order if i in ever_failed and latest[i]["result"] != "FAIL"],
+        "withdrawn": [i for i in order if latest[i]["result"] == "WITHDRAWN"],
+        "all_pass": bool(counted) and len(passed) == len(counted),
+    }
+
+
+# --------------------------------------------------------------------------
 # Cache
 # --------------------------------------------------------------------------
 

@@ -195,3 +195,88 @@ def test_text_file_mode(ledger, tmp_path):
     assert data["result"] == "PASS"
     with pytest.raises(ToolError):
         verify.main(["--text-file", str(tmp_path / "nope.txt"), "--run", run])
+
+
+# ---------------- verification log ----------------
+
+def log(run):
+    return common.read_verifications(run)
+
+
+def test_single_checks_are_logged_and_entries_untouched(ledger):
+    run, ids = ledger
+    before = (common.evidence_root() / run / f"{ids['growth']}.json").read_text()
+    single(run, ids["growth"], "8.1%")
+    single(run, ids["growth"], "9.9%")
+    records = log(run)
+    assert [r["result"] for r in records] == ["PASS", "FAIL"]
+    assert records[0]["id"] == ids["growth"] and records[0]["claimed"] == "8.1%"
+    assert "stored 0.0814" in records[1]["detail"] and records[1]["checked_at"].endswith("Z")
+    assert set(records[0]) == {"id", "claimed", "result", "detail", "checked_at"}
+    assert (common.evidence_root() / run / f"{ids['growth']}.json").read_text() == before
+
+
+def test_not_found_is_logged_as_fail(ledger):
+    run, _ = ledger
+    single(run, "E999", "1.0")
+    assert log(run)[-1]["result"] == "FAIL" and "not_found" in log(run)[-1]["detail"]
+
+
+def test_withdraw(ledger):
+    run, ids = ledger
+    single(run, ids["growth"], "9.9%")
+    _, evidence, data = verify.main([ids["growth"], "--withdraw", "--run", run])
+    assert data["result"] == "WITHDRAWN" and evidence == [ids["growth"]]
+    assert log(run)[-1] == {**log(run)[-1], "id": ids["growth"], "claimed": None, "result": "WITHDRAWN"}
+    assert data["citations"]["display"] == "0/0" and data["citations"]["withdrawn"] == [ids["growth"]]
+
+
+@pytest.mark.parametrize("argv", [["E1", "--withdraw", "--value", "1"], ["--withdraw", "--text", "x"]])
+def test_withdraw_bad_input(ledger, argv):
+    run, _ = ledger
+    with pytest.raises(ToolError) as err:
+        verify.main(argv + ["--run", run])
+    assert err.value.code == "bad_input"
+
+
+def test_pass_rate_corrected_uncorrected_withdrawn(ledger):
+    run, ids = ledger
+    single(run, ids["revenue"], "12.4B")                     # PASS
+    single(run, ids["growth"], "9.9%")                       # FAIL ...
+    single(run, ids["growth"], "8.1%")                       # ... corrected by PASS
+    single(run, ids["volume"], "2.5x")                       # FAIL, uncorrected
+    single(run, ids["eps"], "9.99")                          # FAIL ...
+    verify.main([ids["eps"], "--withdraw", "--run", run])    # ... withdrawn: excluded
+    summary = common.citation_summary(run)
+    assert summary["display"] == "2/3"
+    assert summary["uncorrected"] == [ids["volume"]]
+    assert summary["corrected"] == [ids["growth"], ids["eps"]]
+    assert summary["withdrawn"] == [ids["eps"]]
+    assert summary["all_pass"] is False
+
+
+def test_pass_rate_with_no_checks(run_id):
+    assert common.citation_summary(run_id) == {"checked": 0, "passed": 0, "display": "0/0", "uncorrected": [],
+                                               "corrected": [], "withdrawn": [], "all_pass": False}
+
+
+def test_report_mode_logs_failures_after_passes(ledger):
+    run, ids = ledger
+    text = (f"Revenue 12.4B [{ids['revenue']}]\n"
+            f"Revenue was 13.0B [{ids['revenue']}]\n"     # same ID, wrong number
+            f"Volume 1.83x [{ids['volume']}] and EPS 1.23 [E999]")
+    verify.main(["--text", text, "--run", run])
+    latest = common.latest_verifications(run)
+    assert latest[ids["revenue"]]["result"] == "FAIL"   # the failure is not hidden by the earlier pass
+    assert latest[ids["volume"]]["result"] == "PASS"
+    assert latest["E999"]["result"] == "FAIL" and "not_found" in latest["E999"]["detail"]
+
+
+def test_torn_log_line_is_an_error(ledger):
+    run, ids = ledger
+    single(run, ids["revenue"], "12.4B")
+    with open(common.evidence_root() / run / "verifications.jsonl", "a") as handle:
+        handle.write('{"id": "E1", "res')
+    with pytest.raises(ToolError) as err:
+        common.read_verifications(run)
+    assert err.value.code == "source_unavailable"
