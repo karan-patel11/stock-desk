@@ -45,8 +45,14 @@ Locked on 2026-11-06 (change prompt for the 2026-11-07 submission). Status says 
   combined by tier weight. **Not built:** the one test request for the domain filter was refused (HTTP 429), so
   whether GDELT accepts `domainis:` joined with OR is untested.
 - What runs instead: news.py's interim output. Sentiment reports one 90-day GDELT average tone over all matching
-  articles, labelled "unweighted, tiers not applied". short and medium are insufficient_coverage, and long reads the
+  articles, labelled "unweighted, tiers not applied". short and medium are `not_measured`, and long reads the
   tone at -1.0 / +1.0.
+- "Not measured" is not "no data" (2026-11-07). `confidence.py --sent not_measured` gives no penalty and adds the
+  reason "sentiment: not measured for <horizon> (interim mode)". `no_data` keeps its -1: that covers a failed or
+  refused news call, a missing 90-day tone, and insufficient_coverage. Before this change, the interim mode's
+  insufficient_coverage made short and medium confidence always low. High never depended on sentiment.
+- Not done: news.py does not return a status per window. Its interim output has no 14d/30d/90d windows and no
+  coverage threshold; the not_measured stances come from the sentiment agent's instructions.
 
 ## Horizons and output (Phase 3, built)
 
@@ -63,7 +69,7 @@ Locked on 2026-11-06 (change prompt for the 2026-11-07 submission). Status says 
 - Every agent message ends with one "🔊 " plain-English line of at most 25 words. In the card it comes just before the
   disclaimer, as the card format shows.
 - Interim sentiment (until Phase 2): one 90-day tone labelled "unweighted, tiers not applied"; short and medium are
-  insufficient_coverage (so no_data for confidence); long reads the 90-day tone at -1.0 / +1.0.
+  not_measured (no confidence penalty); long reads the 90-day tone at -1.0 / +1.0.
 - Room alias `chief` for desk-chief, from the documented room `aliases:` field. Not yet seen working in Slack.
 
 ## Narrator (Phase 4, built)

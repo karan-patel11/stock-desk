@@ -30,8 +30,9 @@ Sentiment reports one number: GDELT's average tone over the last 90 days for the
 **"unweighted, tiers not applied"**. It covers every matching article from every outlet, including off-topic ones.
 It is not weighted by source and not de-duplicated, and it gives no 14- or 30-day window. So:
 
-- short and medium get `insufficient_coverage` from sentiment, which counts as "no data" and lowers their confidence
-  by one level;
+- short and medium get `not_measured` from sentiment. This is not a penalty: confidence.py only adds the reason
+  "sentiment: not measured for <horizon> (interim mode)". A failed or refused news call is still "no data" and still
+  lowers confidence by one level;
 - long reads the 90-day tone: at or below -1.0 negative, at or above +1.0 positive, otherwise neutral.
 
 News tone can only lower confidence, never raise it. Tone weighted by source tier was designed but is **deferred**:
@@ -216,7 +217,7 @@ Confidence is a label (low, medium, high) computed by `tools/confidence.py` from
 chief may not set or change it. There are no percentages.
 
 1. Every horizon starts at **medium**.
-2. It drops one level for each of these: an analyst had no data; the precedent check found fewer than 3 past events for
+2. It drops one level for each of these: an analyst had no data (sentiment "not measured" does not count); the precedent check found fewer than 3 past events for
    that horizon's window; no precedent check was run; a cited number failed verification and was not corrected; the news
    tone points the other way from the outlook (only when the outlook is bullish or bearish).
 3. It becomes **high** only if nothing above applied, every checked citation passed, and the analysts that matter most
