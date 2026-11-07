@@ -12,13 +12,17 @@ Rules this tool enforces:
 - Facts are deduplicated per period, keeping the latest filing. Amendments (10-K/A, 10-Q/A) are ignored.
 - Anything missing or undefined (no tag, prior value <= 0, no peers configured) is listed in
   data.unavailable. Nothing is guessed or interpolated.
+- Freshness: a metric whose latest quarterly value ended more than STOCKDESK_MAX_FUND_AGE_DAYS (default 200)
+  days before today (UTC) is dropped and listed as "latest quarterly value ends <date>; stale". Annual values
+  are never substituted. If no metric is fresh, the tool returns no_data. (Example: JPM's quarterly
+  us-gaap:Revenues stops in 2014; without this check those quarters were reported as the latest.)
 """
 from __future__ import annotations
 
 import json
 import sys
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, Sequence
 
 import common
@@ -29,6 +33,8 @@ SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik}.json"
 FACTS_URL = "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json"
 SEC_INTERVAL = 0.15  # seconds between SEC requests; SEC's limit is 10 per second
 FORMS = ("10-Q", "10-K")
+MAX_AGE_ENV = "STOCKDESK_MAX_FUND_AGE_DAYS"
+DEFAULT_MAX_AGE_DAYS = 200
 
 # key, label, ledger unit, SEC unit, kind, us-gaap tags in priority order
 METRICS = [
@@ -178,7 +184,20 @@ def collect_metric(us_gaap: dict[str, Any], tags: list[str], sec_unit: str, kind
     return merged, used
 
 
-def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
+def max_age_days() -> int:
+    raw = common.env(MAX_AGE_ENV)
+    if not raw:
+        return DEFAULT_MAX_AGE_DAYS
+    try:
+        days = int(raw)
+    except ValueError:
+        days = 0
+    if days <= 0:
+        raise ToolError("bad_input", f"{MAX_AGE_ENV} must be a positive whole number of days, got {raw!r}")
+    return days
+
+
+def main(argv: Sequence[str], today: date | None = None) -> tuple[str | None, list[str], dict[str, Any]]:
     parser = common.ContractParser(prog="fund.py", description="Fundamentals from SEC EDGAR XBRL.")
     parser.add_argument("ticker")
     parser.add_argument("--quarters", type=int, default=8, help="number of most recent quarters (1-12)")
@@ -188,6 +207,8 @@ def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
     if not 1 <= args.quarters <= 12:
         raise ToolError("bad_input", "--quarters must be between 1 and 12")
     run = common.resolve_run(args.run)
+    max_age = max_age_days()
+    today_text = (today or common.utc_now().date()).isoformat()
     common.user_agent(required=True)  # fail before any request if the SEC contact is not configured
 
     cik, name = resolve_cik(ticker)
@@ -272,7 +293,33 @@ def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
 
     if "revenue" not in collected:
         raise ToolError("no_data", f"no quarterly revenue found for {ticker}")
-    ends = sorted(collected["revenue"])[-args.quarters:]
+
+    # ---- freshness: drop any metric whose latest quarterly value is too old ----
+    for key in list(collected):
+        if collected[key]:
+            latest = max(collected[key])
+        else:  # total debt built from its two parts: the latest date both parts have
+            common_ends = set.intersection(*(set(p) for p in debt_parts.values()))
+            latest = max(common_ends) if common_ends else None
+        if latest is None:
+            continue
+        if _days(today_text, latest) > max_age:
+            unavailable.append({"metric": key, "reason": f"latest quarterly value ends {latest}; stale"})
+            del collected[key]
+            tags_used.pop(key, None)
+
+    if not collected:
+        reasons = "; ".join(f"{u['metric']}: {u['reason']}" for u in unavailable if u["metric"] in {m[0] for m in METRICS})
+        raise ToolError("no_data", f"no fresh quarterly data for {ticker} ({reasons or 'no metrics found'})")
+    if "revenue" in collected:
+        ends = sorted(collected["revenue"])[-args.quarters:]
+    else:  # revenue stale or missing: use the quarters the fresh flow metrics have
+        flow_keys = [m[0] for m in METRICS if m[4] != "instant" and m[0] in collected]
+        pool = set().union(*(collected[k] for k in flow_keys)) if flow_keys else set().union(
+            *(collected[k] for k in collected if collected[k]))
+        if not pool:
+            raise ToolError("no_data", f"no fresh quarterly data for {ticker}")
+        ends = sorted(pool)[-args.quarters:]
     labels = {key: (label, unit) for key, label, unit, *_ in METRICS}
 
     input_ids: dict[tuple[str, str, str | None], str] = {}
@@ -341,8 +388,14 @@ def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
                 return candidate
         return None
 
+    def quarter_start(end: str) -> str | None:
+        for key in ("revenue", "gross_profit", "operating_income", "net_income", "eps_diluted"):
+            if end in collected.get(key, {}):
+                return collected[key][end].start
+        return None
+
     def derive(fact: str, value: float, unit: str, end: str, formula: str, parents: list[str]) -> dict[str, Any]:
-        period = f"{collected['revenue'][end].start}/{end}"
+        period = f"{quarter_start(end)}/{end}"
         evidence_id = record(fact, round(value, 6), unit, period, "Derived by fund.py from ledger entries", facts_url,
                              formula, derived_from=parents)
         return {"id": evidence_id, "value": round(value, 6)}
@@ -392,7 +445,7 @@ def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
         "ticker": ticker, "cik": cik, "name": name or sub.get("name", ""),
         "sic": sic, "sic_description": sub.get("sicDescription"), "sic_id": sic_id,
         "fiscal_year_end": sub.get("fiscalYearEnd"), "fiscal_year_end_id": fye_id,
-        "latest_quarter_end": ends[-1], "retrieved_at": retrieved_at, "tags_used": tags_used,
+        "latest_quarter_end": ends[-1], "as_of": today_text, "max_age_days": max_age, "retrieved_at": retrieved_at, "tags_used": tags_used,
         "peers": peers, "peers_id": peers_id, "sector_etf": etf, "sector_etf_id": etf_id,
         "quarters": [quarter_rows[end] for end in ends], "unavailable": unavailable,
     }

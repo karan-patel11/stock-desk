@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 import json
 
 import pytest
@@ -48,8 +50,11 @@ def sec(monkeypatch, fixtures_dir):
     return calls, install
 
 
-def run_fund(run, *extra):
-    return fund.main(["TSTCO", "--run", run, *extra])
+TODAY = date(2026, 11, 4)  # fixed clock: the synthetic latest quarter (2026-08-31) is 65 days old
+
+
+def run_fund(run, *extra, today=TODAY):
+    return fund.main(["TSTCO", "--run", run, *extra], today=today)
 
 
 def row(data, end):
@@ -304,3 +309,60 @@ def test_amended_forms_and_non_numeric_values_are_ignored():
     ]}}}
     facts = fund.extract_facts(gaap, "Revenues", "USD")
     assert [f.val for f in facts] == [7]
+
+
+
+# ---------------- freshness ----------------
+
+def test_fresh_data_passes_the_age_check(sec, run_id):
+    _, _, data = run_fund(run_id, today=date(2027, 3, 19))  # 200 days after 2026-08-31: still fresh
+    assert data["latest_quarter_end"] == "2026-08-31" and data["max_age_days"] == 200
+    assert not any("stale" in u["reason"] for u in data["unavailable"])
+
+
+def test_a_single_stale_metric_is_no_data_and_never_filled_from_annual(sec, run_id):
+    _, install = sec
+
+    def stop_gross_profit(facts):  # gross profit quarters stop at 2025-11-30; annual values remain
+        node = facts["facts"]["us-gaap"]["GrossProfit"]["units"]["USD"]
+        node[:] = [f for f in node if f["end"] <= "2025-11-30" or (f.get("start") and
+                   (date.fromisoformat(f["end"]) - date.fromisoformat(f["start"])).days > 300)]
+    install(stop_gross_profit)
+    _, _, data = run_fund(run_id)
+    assert {"metric": "gross_profit", "reason": "latest quarterly value ends 2025-11-30; stale"} in data["unavailable"]
+    for quarter in data["quarters"]:
+        assert "gross_profit" not in quarter["metrics"] and "gross_margin" not in quarter["margins"]
+    assert "revenue" in row(data, "2026-08-31")["metrics"] and "gross_profit" not in data["tags_used"]
+
+
+def test_every_metric_stale_is_no_data(sec, run_id):
+    with pytest.raises(ToolError) as err:
+        run_fund(run_id, today=date(2027, 3, 21))  # 202 days after the latest quarter
+    assert err.value.code == "no_data" and "revenue: latest quarterly value ends 2026-08-31; stale" in err.value.detail
+
+
+def test_stale_revenue_keeps_other_fresh_metrics(sec, run_id):
+    _, install = sec
+
+    def stop_revenue(facts):
+        for tag in ("SalesRevenueNet", "RevenueFromContractWithCustomerExcludingAssessedTax"):
+            node = facts["facts"]["us-gaap"].get(tag)
+            if node:
+                node["units"]["USD"] = [f for f in node["units"]["USD"] if f["end"] <= "2024-11-30"]
+    install(stop_revenue)
+    _, _, data = run_fund(run_id)
+    assert any(u["metric"] == "revenue" and u["reason"].endswith("; stale") for u in data["unavailable"])
+    assert data["latest_quarter_end"] == "2026-08-31"
+    latest = row(data, "2026-08-31")
+    assert "revenue" not in latest["metrics"] and "net_income" in latest["metrics"] and latest["margins"] == {}
+
+
+def test_age_threshold_is_configurable(sec, run_id, monkeypatch):
+    monkeypatch.setenv("STOCKDESK_MAX_FUND_AGE_DAYS", "30")
+    with pytest.raises(ToolError) as err:
+        run_fund(run_id)  # 65 days old > 30
+    assert err.value.code == "no_data"
+    monkeypatch.setenv("STOCKDESK_MAX_FUND_AGE_DAYS", "soon")
+    with pytest.raises(ToolError) as err:
+        run_fund(run_id)
+    assert err.value.code == "bad_input"
