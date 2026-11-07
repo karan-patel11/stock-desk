@@ -1,14 +1,29 @@
 # Stock Desk
 
-A research desk for small investment teams, built on [Switch](https://github.com/sandbox-quantum/switch) for the
-WeMakeDevs "Flip the Switch" hackathon (Track 01, Best Business Workflow).
+**Every number cited. Every claim checked.** A stock research desk of four AI agents that works in your Slack channel,
+built on [Switch](https://github.com/sandbox-quantum/switch) for the WeMakeDevs "Flip the Switch" hackathon
+(Track 01, Best Business Workflow).
 
-Type `@desk-chief analyze NKE` (or `@chief analyze NKE medium, focus on debt`) in a Slack channel. The chief asks your
-goal (short, medium or long term, or all) unless you gave it. Three analyst agents (fundamental, technical, sentiment)
-report with cited evidence IDs. The chief checks every cited number against an evidence ledger, cross-examines the
-analysts (two rounds at most), orders a precedent check, and posts a verdict card in the channel with an outlook and a
-rule-based confidence for each horizon. The debate stays in the thread, and the full evidence table is saved in the
-room's verdict document. Humans can interrupt at any time.
+Research agents sound confident, and their numbers are often made up. Stock Desk makes that impossible by
+construction: an agent may only write a number that a Python tool put in an evidence ledger, and the chief agent checks
+every figure in code before anything reaches the channel.
+
+You type `@desk-chief analyze NKE`. The chief asks your goal (1–4 weeks, 3–6 months, 1–3 years, or all), sends three
+analysts a scoped brief, verifies each report line by line, runs two rounds of questions and a precedent check, and posts
+a verdict card in the channel. The outlook per horizon is the chief's judgment from verified evidence; the confidence
+comes from a fixed rule (`tools/confidence.py`) that no model can override. The debate stays in the thread, and the
+full evidence table is saved in the room.
+
+| From a real run (`r-20261107-05`, 7 Nov 2026, `docs/desk-run-nke-2.md`) | |
+|---|---|
+| Citations verified | 28/28, with 54 checks logged and none failed |
+| Evidence entries in the ledger | 369, each with source, tier, link and retrieval time |
+| Verdict (goal: 3–6 months) | Bearish, confidence high: revenue −4.3259% YoY (SEC, T1) [E159]; close 38.59 below the 200-day average 45.41 (T2) [E165, E167] |
+| When data failed | GDELT refused the news tone; the desk said "no data" and long-term confidence dropped to low |
+| Time | about 7 minutes |
+
+**Research only, not financial advice.** Outlooks are Bullish, Bearish or Neutral; the desk never says buy or sell and
+never gives price targets.
 
 ## Horizons
 
@@ -59,23 +74,25 @@ Agents reason and talk. Python does every calculation and writes the evidence th
 
 | Item | State |
 |---|---|
-| All tools, ledger, verify, confidence, evidence table, round cap, template builder | 204 offline tests pass (`pytest`, networking disabled) |
+| All tools, ledger, verify, confidence, evidence table, round cap, narrator, template builder | 281 offline tests pass (`pytest`, networking disabled) |
 | SEC parsing (`fund.py`) | Tested against **synthetic** fixtures for a fictional company (`tests/fixtures/build_synthetic.py`), not recorded SEC responses |
-| Live data (SEC, Yahoo, GDELT) | `scripts/smoke_live.sh NKE Nike` passed on 2026-11-06 |
+| Live data (SEC, Yahoo, GDELT) | Every tool passed live on 2026-11-06; SEC, Yahoo, precedent, verify, confidence and evidence table re-run live on 2026-11-07 (GDELT refused that day) |
 | Switch template and Slack | Stage 0 and two full NKE desk runs passed on Slack on 2026-11-05 (`docs/stage0-results.md`, `docs/desk-run-nke.md`) |
-| New rules in Slack (goal, horizons, confidence tool, card) | One full NKE run on 2026-11-07: 28/28 citations, confidence as computed by `confidence.py` (`docs/desk-run-nke-2.md`). Agent instructions were pasted into Switch Console, not loaded from the template |
+| New rules in Slack (goal, horizons, confidence tool, card) | One full NKE run on 2026-11-07: 28/28 citations, confidence as computed by `confidence.py`, saved verdict uses T1/T2/unrated (`docs/desk-run-nke-2.md`). Agent instructions were pasted into Switch Console, not loaded from the template |
+| Room commands | `explain E159` and `evidence` tested in Slack on 2026-11-07. `ask`, `pause` / `resume` and a mid-run interrupt not yet tested |
+| Voice | Not shown working. Wispr Flow dictation needs no code; `scripts/narrator.py` is tested offline only (no Slack token was configured) |
 
 ## Setup (about 10 minutes, excluding Slack)
 
 ```bash
-git clone <this repo> && cd stock-desk
+git clone https://github.com/karan-patel11/stock-desk.git && cd stock-desk
 python3 -m venv .venv && source .venv/bin/activate      # Python 3.11+
 pip install -r requirements.txt
 cp .env.example .env
 # edit .env: set SEC_USER_AGENT to "StockDesk Your Name your-real-email@example.com"
 # (SEC requires a real contact; the tools refuse the placeholder). Leave STOCKDESK_HOME empty to use this folder.
 pytest                                                  # must pass offline
-scripts/smoke_live.sh NKE Nike                          # live run of every tool; read the output
+scripts/smoke_live.sh NKE                               # live run of every tool; read the output
 ```
 
 `STOCKDESK_HOME` must be the absolute path of this repo on the machine that runs the agents. All agents share
@@ -93,7 +110,7 @@ used by `scripts/build_template.py` to validate YAML.)
    needed). Slack is the Stage 0 bridge; Docker is not needed for it. Note the **Name** you give the connection: the
    templates' **Messaging app** param asks for it. The built-in Mattermost (needs Docker) is the documented fallback
    only; pick its connection for the same param instead.
-3. **Stage 0, do this before anything else.** Load `switch/mention-test.template.yaml` in the Console and pick the
+3. **Stage 0 (optional sanity check).** Load `switch/mention-test.template.yaml` in the Console and pick the
    Slack connection. Pass criteria:
    - [ ] Kickoff wakes s0-chief
    - [ ] s0-chief mentions s0-technical, s0-technical replies, and the reply wakes s0-chief (`MENTION TEST PASSED`)
@@ -107,7 +124,7 @@ used by `scripts/build_template.py` to validate YAML.)
 4. Build and load the desk: `python3 scripts/build_template.py` (it rebuilds the template from `agents/*.md`), then load
    `switch/desk-team.template.yaml` with params
    `ticker`, `stockdesk_home` (absolute path), `python` (the venv interpreter, for example `/abs/path/.venv/bin/python`)
-   and `bridge`. The kickoff posts `@desk-chief analyze <ticker>`.
+   and `bridge`. The kickoff posts `@desk-chief analyze <ticker>`, so the first run starts as soon as the room exists.
 5. **Check each agent's instructions, and fix them if needed.** On our server (Switch Console 0.40.1) the template's
    `{python}` and `{stockdesk_home}` placeholders stayed as literal text inside the agents' instructions, although
    `docs/TEMPLATES.md` says every string is filled in. Open each desk agent in Switch Console (**Your Agents → the agent
@@ -122,6 +139,11 @@ used by `scripts/build_template.py` to validate YAML.)
    `!reset @desk-chief`, `!reset @desk-fundamental`, `!reset @desk-technical`, `!reset @desk-sentiment`. Each agent
    replies that it reset. Then start a run with `@desk-chief analyze NKE` and answer the goal question with, for
    example, `@desk-chief 2`. `docs/desk-run-nke-2.md` shows a complete run.
+7. **Let teammates use it (optional).** Each agent answers only its owner by default (Agent settings, "Who can talk to
+   your agent: Me and my agents"). For a team, change that setting on all four desk agents so people in the room can
+   address them. Anyone who can address the agents can start tool runs on the host machine, so do this only in a
+   channel you trust. The template's room alias makes `@chief` work too; if it is missing, type
+   `!set-alias @desk-chief @chief` in the channel.
 
 ## Commands
 
@@ -144,7 +166,7 @@ python scripts/build_template.py [--check]
 
 ## In the room
 
-Commands for desk-chief (or `@chief`, the room alias), any time during a run:
+Commands for desk-chief (or `@chief` where the room alias is set), any time during a run:
 
 | Command | What it does |
 |---|---|
@@ -161,7 +183,7 @@ Every agent message ends with one line starting with 🔊: a plain-English summa
 
 Dictate into Slack with Wispr Flow (or any dictation tool); no integration is needed. Add `desk-chief`,
 `desk-fundamental`, `desk-technical` and `desk-sentiment` to Wispr's dictionary: agents wake only on their exact name,
-so a misspelled name means silence. In the desk room, `@chief` also reaches desk-chief.
+so a misspelled name means silence. Where the room alias is set, `@chief` also reaches desk-chief.
 
 ### Narrator (optional)
 
@@ -181,7 +203,7 @@ when Slack rate limits it. Start it before `@desk-chief analyze`, or within 2 ho
 
 ## Demo day
 
-GDELT often rate limits for minutes at a time, and a refused call means a sentiment error in the thread. Warm the cache
+GDELT rate limits hard: on 2026-11-07 it refused this machine for more than two hours after a few requests, and a refused call means sentiment reports no data. Warm the cache
 first:
 
 ```bash
@@ -286,7 +308,7 @@ from annual values. Banks and insurers remain unsupported (`docs/DECISIONS.md`, 
 - **GDELT DOC 2.0** is a metadata index of news articles (headlines, URLs, tone), not the articles themselves. It updates
   about every 15 minutes, covers roughly the last 3 months, and allows one request per 5 seconds. The tools space GDELT
   calls at least 6 seconds apart, across processes, cache them, and return `rate_limited` at once on a refusal: retrying
-  only lengthens the block (seen live: more than 20 minutes after a burst).
+  only lengthens the block (seen live: more than two hours).
 
 This is a hackathon project, not a data product.
 
@@ -296,7 +318,7 @@ This is a hackathon project, not a data product.
 agents/            instruction files, source of truth for the 4 agents (chief max 80 lines, analysts max 60)
 switch/            desk-team.skeleton -> desk-team.template.yaml (generated), mention-test.template.yaml
 tools/             common fund tech news precedent verify round confidence evidence_table
-config/            peers.json sector_etf.json
+config/            peers.json sector_etf.json news_names.json
 scripts/           build_template.py smoke_live.sh warm_demo.sh narrator.py
 docs/              DECISIONS.md, Stage 0 runbook and results, desk run records
 tests/             offline tests and synthetic fixtures
