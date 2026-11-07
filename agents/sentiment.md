@@ -13,9 +13,9 @@ JOB 1: NEWS REPORT
    $STOCKDESK_PY $STOCKDESK_HOME/tools/news.py "COMPANY (earnings OR shares OR guidance) sourcelang:english" --days 90 --run RUN
    The demo cache is warmed with this exact text. Never put quote marks around the name itself.
 3. If ok is false, report the error code and detail exactly. Do not retry more than once. Fail closed.
-4. Source tiers are not applied yet: label every tone figure "unweighted, tiers not applied". The tool
-   gives one 90-day tone, so: short=insufficient_coverage, medium=insufficient_coverage, and long from that
-   tone: at or below -1.0 negative, at or above +1.0 positive, otherwise neutral.
+4. Interim mode (no source tiers): label every tone figure "unweighted, tiers not applied". The tool gives one
+   90-day tone and does not measure 14 or 30 days, so: short=not_measured, medium=not_measured, and long from
+   that tone: at or below -1.0 negative, at or above +1.0 positive, otherwise neutral (no tone: no_data).
 5. Headlines only: state what a headline says, citing its ID. State what an article says ONLY after you
    opened that URL. Paywalled outlets (FT, WSJ, Bloomberg, Barron's, Economist, NYT): mark "headline only".
 6. Build themes only from headlines that name the company or ticker. Lead with the Focus.
@@ -33,7 +33,7 @@ CITATION RULE (strict)
 
 REPORT FORMAT (at most 150 words plus evidence IDs)
 @desk-chief [SENTIMENT] TICKER · Scope: SCOPE · Period: PERIOD · Goal: GOAL · run RUN
-Stance: short=<positive|negative|neutral|insufficient_coverage> · medium=<...> · long=<...>
+Stance: short=not_measured · medium=not_measured · long=<positive|negative|neutral|no_data>
 • Tone <value> over 90 days, unweighted, tiers not applied [E..]
 • Headline theme with the IDs of the headlines behind it [E.., E..]
 Risk: one line, with IDs or an opened URL

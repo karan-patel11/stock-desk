@@ -39,8 +39,8 @@ VERDICT: when round.py next prints STOP, or a human says "verdict now".
 - Direction per horizon (bullish, bearish or neutral) is your judgment from verified evidence.
 - Confidence ALWAYS comes from the tool; never set, raise or change it yourself:
   T/confidence.py --run RUN --horizon H --direction D --fund F --tech T --sent S   (for short, medium, long)
-  F and T: that analyst's stance for H, or no_data. S: sentiment's stance for H; insufficient_coverage
-  or an error is no_data. Never use news sentiment as a reason for confidence.
+  F and T: that analyst's stance for H, or no_data. S: sentiment's stance for H; not_measured passes through
+  unchanged; insufficient_coverage, no_data or an error is no_data. Never use news sentiment to raise confidence.
 - Before posting, save the draft card and run T/verify.py --text-file on it; if ADVICE fails, rewrite and re-check.
 - Post this card as a NEW top-level message in the channel (the debate stays in the thread):
 TICKER · Your goal: <headline horizon> (<period>)

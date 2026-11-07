@@ -124,7 +124,7 @@ def test_analysts_echo_scope_and_use_the_exact_stance_line():
         assert f"@desk-chief [{tag}] TICKER · Scope: SCOPE · Period: PERIOD · Goal: GOAL · run RUN" in text
         stance = next(line for line in text.splitlines() if line.startswith("Stance: "))
         if name == "sentiment":
-            assert stance.startswith("Stance: short=<positive|negative|neutral|insufficient_coverage> · medium=")
+            assert stance == "Stance: short=not_measured · medium=not_measured · long=<positive|negative|neutral|no_data>"
         else:
             assert stance == ("Stance: short=<bullish|bearish|neutral> · medium=<bullish|bearish|neutral> · "
                               "long=<bullish|bearish|neutral>")
@@ -168,3 +168,11 @@ def test_room_alias_and_rules():
     text = (ROOT / "switch" / "desk-team.template.yaml").read_text(encoding="utf-8")
     assert '  aliases:\n    desk-chief: "chief"\n' in text
     assert "Three layers" in text and "confidence.py" in text and "🔊" in text
+
+
+
+def test_chief_passes_not_measured_through_and_errors_as_no_data():
+    flat = " ".join(agent("chief").split())
+    assert "not_measured passes through unchanged" in flat
+    assert "insufficient_coverage, no_data or an error is no_data" in flat
+    assert "short=not_measured, medium=not_measured" in " ".join(agent("sentiment").split())
