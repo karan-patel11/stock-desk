@@ -22,7 +22,7 @@ full evidence table is saved in the room.
 | When data failed | GDELT refused the news tone; the desk said "no data" and long-term confidence dropped to low |
 | Time | about 7 minutes |
 
-An illustrated walkthrough of the desk, the run and how to use it is in `docs/site/index.html` (open it in a browser).
+**Live site: https://karan-patel11.github.io/stock-desk/** — an illustrated walkthrough of the desk, one chat from start to end, a real run and how to use it (source: `docs/site/index.html`).
 
 **Research only, not financial advice.** Outlooks are Bullish, Bearish or Neutral; the desk never says buy or sell and
 never gives price targets.
