@@ -92,6 +92,48 @@ code, .mono { font-family: var(--mono); font-size: .9em; }
 .card-text b { color: var(--brass); font-weight: 500; }
 .card-text .soft { color: var(--mist-soft); }
 
+/* designed verdict card */
+.vcard { display: grid; gap: 14px; }
+.vk { font-size: 13px; color: var(--mist-soft); }
+.vh { display: grid; gap: 8px; padding: 16px; border-radius: 12px; background: rgba(255,255,255,.05); border: 1px solid var(--line-dark); }
+.vh .hz { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--mist-faint); }
+.vh .line { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.vh .out { font-family: var(--display); font-size: 34px; line-height: 1; }
+.vh .why { font-size: 14px; color: var(--mist-soft); }
+.hrows { display: grid; gap: 0; border-top: 1px solid var(--line-dark); }
+.hrow { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding-block: 9px; border-bottom: 1px solid var(--line-dark); font-size: 13.5px; }
+.hrow .h { color: var(--mist-soft); }
+.proofs { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.proofs li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,.035); font-size: 13.5px; }
+.proofs .meta { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.tier { font: 500 11.5px var(--mono); padding: 2px 8px; border-radius: 6px; border: 1px solid var(--line-dark); color: var(--mist); }
+.tier.t1 { border-color: rgba(127,180,142,.5); color: var(--pass); }
+.tier.t2 { border-color: rgba(200,176,122,.5); color: var(--brass); }
+.tier.un { color: var(--mist-soft); }
+.ok { color: var(--pass); font-size: 12px; }
+.disc { font-size: 12px; color: var(--mist-faint); }
+
+/* caught it: before / after */
+.ba { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-top: 40px; }
+.ba .side { border-radius: 16px; padding: 22px; border: 1px solid var(--line-light); background: #fff; display: grid; gap: 12px; align-content: start; min-width: 0; }
+.ba .side.bad { border-color: rgba(176,96,60,.45); }
+.ba .side.good { border-color: rgba(60,120,80,.45); }
+.ba .lab { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; font-weight: 600; }
+.ba .bad .lab { color: #9a4f2e; } .ba .good .lab { color: #2f6b45; }
+.ba blockquote { margin: 0; font-size: 15px; color: var(--ink); border-left: 2px solid var(--line-light); padding-left: 12px; }
+.ba mark { background: rgba(176,96,60,.16); color: inherit; padding: 0 2px; border-radius: 3px; }
+.verdict-out { font-family: var(--mono); font-size: 12.5px; background: var(--night); color: var(--mist); border-radius: 10px; padding: 12px 14px; overflow-x: auto; white-space: pre; margin: 0; }
+.verdict-out .f { color: #e39a7a; } .verdict-out .p { color: var(--pass); }
+@media (max-width: 760px) { .ba { grid-template-columns: 1fr; } }
+
+/* why switch */
+.sw { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line-dark); border: 1px solid var(--line-dark); border-radius: 16px; overflow: hidden; margin-top: 44px; }
+.sw div { background: var(--night); padding: 24px; display: grid; gap: 8px; align-content: start; }
+.sw h4 { margin: 0; font-size: 16px; font-weight: 600; }
+.sw p { color: var(--mist-soft); font-size: 14.5px; }
+.sw .k { font-family: var(--mono); font-size: 12px; color: var(--brass); }
+@media (max-width: 900px) { .sw { grid-template-columns: 1fr; } }
+
 /* stats */
 .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line-dark); border: 1px solid var(--line-dark); border-radius: 16px; overflow: hidden; margin-top: 48px; }
 .stat { background: var(--night); padding: 24px; display: grid; gap: 4px; }
@@ -190,6 +232,7 @@ footer p { color: var(--mist-soft); font-size: 14px; }
       <a href="#how">How it works</a>
       <a href="#run">A real run</a>
       <a href="#guardrails">Guardrails</a>
+      <a href="#switch">Why Switch</a>
       <a href="#use">Use it</a>
     </nav>
     <a class="btn ghost" href="https://github.com/karan-patel11/stock-desk" target="_blank" rel="noopener">GitHub</a>
@@ -202,30 +245,32 @@ footer p { color: var(--mist-soft); font-size: 14px; }
     <div class="copy">
       <p class="eyebrow">Built on Switch · Slack · Four Claude Code agents</p>
       <h1>Every number cited.<br><span class="dim">Every claim checked.</span></h1>
-      <p class="lede">A stock research desk that lives in your Slack channel. Three analyst agents report, a chief agent checks every figure against an evidence ledger in code, and a verdict card lands in the channel with a confidence level no model can inflate.</p>
+      <p class="lede">For small investment teams: a cross-examined research brief on any covered stock in about seven minutes, in the Slack channel you already use. Three analyst agents report, a chief agent checks every figure against an evidence ledger in code, and the verdict carries a confidence level no model can inflate.</p>
       <div class="cta">
         <a class="btn primary" href="#run">See a real run</a>
         <a class="btn ghost" href="#use">How to use it</a>
+        <!-- Loom: add <a class="btn ghost" href="LOOM_URL" target="_blank" rel="noopener">Watch the 3-minute demo</a> -->
       </div>
       <p class="eyebrow" style="letter-spacing:.08em">Research only, not financial advice</p>
     </div>
-    <div class="panel" aria-label="Verdict card from run r-20261107-05">
+    <div class="panel vcard" aria-label="Verdict card from run r-20261107-05">
       <div class="panel-head"><span>#desk-nke · verdict card</span><span class="chip pass">Citations verified 28/28</span></div>
-<pre class="card-text">NKE · Your goal: Medium term (3–6 months)
-<b>▶ MEDIUM TERM (3–6 months): BEARISH · Confidence: high</b>
-<span class="soft">  Why: Revenue is still shrinking and price sits below its
-  200-day average, and NKE lagged its sector over 90 sessions
-  after past comparable reports.</span>
-  Short term (1–4 weeks): Neutral · Confidence: high
-  Long term (1–3 years): Neutral · Confidence: low (sentiment: no data)
-3 proofs:
- 1. Revenue fell 4.3259% YoY, quarter ended 2026-08-31
-    (SEC EDGAR, T1, verified) <b>[E159]</b>
- 2. Close 38.59 is below the 200-day average of 45.41
-    (Yahoo Finance via yfinance, T2, verified) <b>[E165, E167]</b>
- 3. Mean 90-session excess return vs XLY after 5 events: -0.085416
-    (derived by precedent.py, unrated, verified) <b>[E366]</b>
-<span class="soft">Research only, not financial advice.</span></pre>
+      <p class="vk">NKE · Your goal: medium term</p>
+      <div class="vh">
+        <span class="hz">Medium term · 3–6 months</span>
+        <div class="line"><span class="out">Bearish</span><span class="lvl high">Confidence high</span></div>
+        <p class="why">Revenue is still shrinking, the price sits below its 200-day average, and NKE lagged its sector over 90 sessions after past comparable reports.</p>
+      </div>
+      <div class="hrows">
+        <div class="hrow"><span class="h">Short term · 1–4 weeks</span><span>Neutral</span><span class="lvl high">high</span></div>
+        <div class="hrow"><span class="h">Long term · 1–3 years</span><span>Neutral</span><span class="lvl low">low</span></div>
+      </div>
+      <ol class="proofs" aria-label="Three proofs">
+        <li><span>Revenue fell 4.3259% year over year</span><span class="ok">verified</span><span class="meta"><span class="tier t1">T1 · SEC EDGAR</span><span class="id">E159</span></span></li>
+        <li><span>Close 38.59, below the 200-day average of 45.41</span><span class="ok">verified</span><span class="meta"><span class="tier t2">T2 · Yahoo prices</span><span class="id">E165, E167</span></span></li>
+        <li><span>−0.085416 vs its sector, 90 sessions after 5 past reports</span><span class="ok">verified</span><span class="meta"><span class="tier un">unrated · derived</span><span class="id">E366</span></span></li>
+      </ol>
+      <p class="disc">Research only, not financial advice.</p>
     </div>
   </div>
 </section>
@@ -235,6 +280,31 @@ footer p { color: var(--mist-soft); font-size: 14px; }
     <p class="eyebrow">The problem</p>
     <h2>Research agents sound confident.<br><span class="dim">Their numbers are often made up.</span></h2>
     <p class="lede">An analyst who quotes "revenue up 8%" has to be able to show where 8% came from. Stock Desk makes that a rule enforced in code: an agent may only write a number that a tool put in the ledger, and the chief checks each one before anything reaches the channel.</p>
+  </div>
+</section>
+
+<section class="band light" id="caught" style="padding-top:0">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Caught in the act · run r-20261105-16</p>
+      <h2>The sentiment agent quoted a headline.<br><span class="dim">The verifier sent it back.</span></h2>
+      <p class="lede">A headline said "Up 17% Off Its 52-Week Low". The agent repeated the 17% as if it were data. No tool had measured it, so no evidence entry held it.</p>
+    </div>
+    <div class="ba">
+      <div class="side bad">
+        <span class="lab">As written</span>
+        <blockquote>Turnaround and growth questions: "Up <mark>17%</mark> Off Its 52-Week Low" [E133] … Share move: "NIKE Shares Up <mark>2%</mark>" [E128]</blockquote>
+<pre class="verdict-out">verify.py --text-file sentiment-r1.txt
+<span class="f">FAIL</span>  17%  no cited ID holds this value
+<span class="f">FAIL</span>  2%   no cited ID holds this value</pre>
+      </div>
+      <div class="side good">
+        <span class="lab">After correction</span>
+        <blockquote>Turnaround and growth questions: a headline asks whether Nike's turnaround is gaining steam after a rise from its 52-week low [E133] … Share move: a headline reports a rise in NIKE shares [E128]</blockquote>
+<pre class="verdict-out">verify.py --text-file sentiment-r1b.txt
+<span class="p">PASS</span>  every number matches the ledger</pre>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -312,7 +382,25 @@ footer p { color: var(--mist-soft); font-size: 14px; }
   </div>
 </section>
 
-<section class="band light" id="use" style="padding-top:0">
+<section class="band" id="switch">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Why it runs on Switch</p>
+      <h2>Without the room,<br><span class="dim">there is no desk.</span></h2>
+      <p class="lede">Switch connects four Claude Code agents to one Slack channel. It provides every part of the workflow that happens between people and agents.</p>
+    </div>
+    <div class="sw">
+      <div><span class="k">@desk-chief</span><h4>Routing by mention</h4><p>A mention wakes exactly one agent. The chief briefs three analysts in one message; each reply wakes the chief again.</p></div>
+      <div><span class="k">one thread</span><h4>The debate in one place</h4><p>Reports, challenges, corrections and round two stay in the run's thread. The verdict card is the only top-level message.</p></div>
+      <div><span class="k">verdict-NKE-2026-11-07</span><h4>Memory in room documents</h4><p>Each verdict is saved as a room document. The next run on the same ticker finds it and quotes it before starting.</p></div>
+      <div><span class="k">explain E159</span><h4>People can step in</h4><p>Anyone in the room can question a figure, ask an analyst, pause the run or call the verdict early.</p></div>
+      <div><span class="k">room instructions</span><h4>Shared rules</h4><p>The desk's rules travel with the room and reach every agent that joins it: cite every number, no advice, two rounds.</p></div>
+      <div><span class="k">!reset · !list-documents</span><h4>Operable from chat</h4><p>Reset an agent, list saved verdicts or add an alias without leaving Slack.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="band light" id="use">
   <div class="wrap">
     <div class="section-head">
       <p class="eyebrow">Use it</p>
