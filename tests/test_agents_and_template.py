@@ -20,11 +20,11 @@ def test_four_agent_files():
 @pytest.mark.parametrize("path", AGENT_FILES, ids=lambda p: p.stem)
 def test_agent_file_rules(path):
     text = path.read_text(encoding="utf-8")
-    assert len(text.splitlines()) <= 60
+    assert len(text.splitlines()) <= (80 if path.stem == "chief" else 60)
     assert "{" not in text and "}" not in text      # Switch would read braces as placeholders
     assert "\t" not in text
     assert "/home/" not in text and "/Users/" not in text and "@" not in re.sub(r"@desk-[a-z]+", "", text)
-    for tool in re.findall(r"tools/([a-z_]+)\.py", text):
+    for tool in re.findall(r"(?:tools|T)/([a-z_]+)\.py", text):
         assert tool in TOOLS, f"{path.name} references missing tool {tool}.py"
     assert re.findall(r"\$[A-Z_]{3,}", text) and set(re.findall(r"\$[A-Z_]{3,}", text)) <= {"$STOCKDESK_HOME", "$STOCKDESK_PY"}
 
@@ -107,6 +107,61 @@ def test_warm_demo_uses_the_sentiment_agents_exact_news_query():
 def test_warm_demo_needs_ticker_and_company():
     result = subprocess.run(["bash", str(ROOT / "scripts" / "warm_demo.sh")], capture_output=True, text=True)
     assert result.returncode == 2 and "usage" in result.stderr
+
+
+
+ANALYSTS = ("fundamental", "technical", "sentiment")
+
+
+def agent(name):
+    return (ROOT / "agents" / f"{name}.md").read_text(encoding="utf-8")
+
+
+def test_analysts_echo_scope_and_use_the_exact_stance_line():
+    for name in ANALYSTS:
+        text = agent(name)
+        tag = name.upper()
+        assert f"@desk-chief [{tag}] TICKER · Scope: SCOPE · Period: PERIOD · Goal: GOAL · run RUN" in text
+        stance = next(line for line in text.splitlines() if line.startswith("Stance: "))
+        if name == "sentiment":
+            assert stance.startswith("Stance: short=<positive|negative|neutral|insufficient_coverage> · medium=")
+        else:
+            assert stance == ("Stance: short=<bullish|bearish|neutral> · medium=<bullish|bearish|neutral> · "
+                              "long=<bullish|bearish|neutral>")
+        assert "at most 150 words" in text
+
+
+def test_every_agent_ends_messages_with_a_voice_line():
+    for name in ("chief",) + ANALYSTS:
+        text = agent(name)
+        assert "🔊" in text and "at most 25 words" in text and "no evidence IDs" in text
+
+
+def test_analysts_run_tools_once_with_the_widest_settings():
+    assert "fund.py TICKER --quarters 12 --run RUN" in agent("fundamental")
+    assert "tech.py TICKER --lookback 2y --run RUN" in agent("technical")
+    assert re.search(r'news\.py "[^"]*" --days 90 --run RUN', agent("sentiment"))
+    assert "unweighted, tiers not applied" in agent("sentiment")
+
+
+def test_chief_scopes_goal_question_confidence_and_card():
+    text = agent("chief")
+    assert "What's your goal for TICKER? Reply with a number:" in text
+    for line in ("1 Short-term trade (1–4 weeks)", "2 Medium-term position (3–6 months)",
+                 "3 Long-term investment (1–3 years)", "or 'all'."):
+        assert line in text
+    assert "@desk-fundamental Scope: earnings quality · Period: last 12 quarters" in text
+    assert "@desk-technical Scope: trend and momentum · Period: 2y" in text
+    assert "@desk-sentiment Scope: news tone and risk events · Period: 90 days (14/30/90 windows)" in text
+    assert "T/confidence.py --run RUN --horizon" in text and "never set, raise or change it yourself" in text
+    assert "--windows 5,30,90,250" in text and "T/evidence_table.py --run RUN" in text
+    assert "T/verify.py E<n> --withdraw" in text and "T/round.py goal" in text
+    card = text[text.index("TICKER · Your goal:"):text.index("Research only, not financial advice.")]
+    for part in ("▶ <HEADLINE HORIZON>", "Confidence reasons:", "3 proofs:", "What flips it:", "Disagreement:",
+                 "Precedent:", "Citations verified:", "🔊 "):
+        assert part in card
+    for command in ("explain E<n>", "evidence:", "ask fundamental|technical|sentiment", "verdict now", "pause"):
+        assert command in text
 
 
 def test_room_alias_and_rules():

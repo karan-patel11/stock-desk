@@ -30,7 +30,7 @@ echo "warm-up run: $RUN (throwaway; the desk starts its own)"
 
 # STOCKDESK_NEWS_CACHE_TTL=1 for this call only: always fetch fresh, so an older entry is replaced, not reused.
 # If GDELT refuses, the tool errors and any older cache entry is left as it was.
-OUT="$(STOCKDESK_NEWS_CACHE_TTL=1 "$PY" tools/news.py "$COMPANY (earnings OR shares OR guidance) sourcelang:english" --days 30 --run "$RUN")"
+OUT="$(STOCKDESK_NEWS_CACHE_TTL=1 "$PY" tools/news.py "$COMPANY (earnings OR shares OR guidance) sourcelang:english" --days 90 --run "$RUN")"
 STATUS=$?
 "$PY" tools/round.py end --run "$RUN" >/dev/null 2>&1 || true
 echo "$OUT" | "$PY" -c '
