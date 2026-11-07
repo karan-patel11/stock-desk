@@ -25,7 +25,7 @@ import common
 from common import ToolError
 
 LOOKBACKS = ("6mo", "1y", "2y", "5y")
-SOURCE = "Yahoo Finance daily bars via yfinance (unofficial)"
+SOURCE = "Yahoo Finance via yfinance (unofficial, disclosed): daily bars"
 
 
 # ---------------- indicators (pure functions) ----------------
@@ -141,6 +141,7 @@ def main(argv: Sequence[str], today: date | None = None) -> tuple[str | None, li
             run, tool="tech.py", fact=f"{fact} ({ticker})", value=round(common.plain(value), 6) if isinstance(value, (int, float, np.floating, np.integer)) else value,
             unit=unit, period=period, source=SOURCE, url=url,
             locator=f"{base_locator}; {definition}", derived_from=derived_from, retrieved_at=retrieved_at,
+            source_tier="T2",
         )
         ids.append(entry["id"])
         metrics[key] = {"id": entry["id"], "value": entry["value"], "unit": unit}

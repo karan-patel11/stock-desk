@@ -33,8 +33,12 @@ except ImportError:  # pragma: no cover - Windows: pacing falls back to this pro
 ERROR_CODES = ("no_data", "source_unavailable", "bad_input", "rate_limited")
 EVIDENCE_FIELDS = (
     "id", "run", "tool", "fact", "value", "unit", "period",
-    "derived_from", "source", "url", "locator", "retrieved_at",
+    "derived_from", "source", "source_tier", "url", "locator", "retrieved_at",
 )
+# Source tiers, strongest first. T1 = regulatory filings (SEC), T2 = market data (yfinance), T3/T4 = news
+# outlets (see config/source_tiers.json). The rest are weaker than any T tier and never count as support.
+SOURCE_TIERS = ("T1", "T2", "T3", "T4", "company_statement", "unrated", "excluded")
+_TIER_RANK = {tier: rank for rank, tier in enumerate(SOURCE_TIERS)}
 RUN_RE = re.compile(r"^r-\d{8}-\d{2,}$")
 EVIDENCE_ID_RE = re.compile(r"^E(\d+)$")
 TICKER_RE = re.compile(r"^[A-Z][A-Z0-9.\-]{0,9}$")
@@ -269,8 +273,13 @@ def write_evidence(
     locator: str,
     derived_from: Iterable[str] | None = None,
     retrieved_at: str | None = None,
+    source_tier: str | None = None,
 ) -> dict[str, Any]:
     """Write one entry with the next free sequential ID.
+
+    source_tier is required for a primary entry. A derived entry (derived_from given) always takes the
+    WEAKEST tier among its inputs, whatever the caller passes, so a derived figure never looks stronger
+    than what it was computed from. An input with no tier (an old ledger) counts as unrated.
 
     IDs are claimed with os.link (fails if the target exists), so analysts running
     tools at the same moment never overwrite each other and never read a half-written file.
@@ -279,6 +288,17 @@ def write_evidence(
     if not run_dir.is_dir():
         raise ToolError("bad_input", f"run {run} not found under evidence/")
     value = plain(value)
+    parents = list(derived_from or [])
+    if parents:
+        tiers = []
+        for parent in parents:
+            parent_entry = read_evidence(run, parent)
+            if parent_entry is None:
+                raise ToolError("bad_input", f"derived_from {parent} not found in run {run}")
+            tiers.append(parent_entry.get("source_tier") or "unrated")
+        source_tier = weakest_tier(tiers)
+    elif source_tier not in _TIER_RANK:
+        raise ToolError("bad_input", f"source_tier must be one of {', '.join(SOURCE_TIERS)}, got {source_tier!r}")
     number = _next_candidate(run_dir)
     while True:
         evidence_id = f"E{number}"
@@ -290,8 +310,9 @@ def write_evidence(
             "value": value,
             "unit": unit,
             "period": period,
-            "derived_from": list(derived_from or []),
+            "derived_from": parents,
             "source": source,
+            "source_tier": source_tier,
             "url": url,
             "locator": locator,
             "retrieved_at": retrieved_at or utc_iso(),
@@ -325,6 +346,14 @@ def write_evidence(
             except FileNotFoundError:
                 pass
         return entry
+
+
+def weakest_tier(tiers: Iterable[str]) -> str:
+    """The weakest of the given tiers (T1 > T2 > T3 > T4 > the rest). Unknown values count as unrated."""
+    ranked = [tier if tier in _TIER_RANK else "unrated" for tier in tiers]
+    if not ranked:
+        raise ToolError("bad_input", "weakest_tier needs at least one tier")
+    return max(ranked, key=_TIER_RANK.__getitem__)
 
 
 def read_evidence(run: str, evidence_id: str) -> dict[str, Any] | None:

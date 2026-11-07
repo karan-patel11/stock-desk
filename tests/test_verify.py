@@ -11,7 +11,7 @@ from common import ToolError
 
 def put(run, fact, value, unit):
     return common.write_evidence(run, tool="t.py", fact=fact, value=value, unit=unit, period="2026-Q1",
-                                 source="SEC EDGAR companyfacts", url="https://data.sec.gov/x", locator="loc")["id"]
+                                 source="SEC EDGAR companyfacts", url="https://data.sec.gov/x", locator="loc", source_tier="T1")["id"]
 
 
 @pytest.fixture

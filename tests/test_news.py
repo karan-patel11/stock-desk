@@ -247,3 +247,8 @@ def test_pacing_holds_across_processes(gdelt, run_id, monkeypatch):
     news.main(["Other Query"])
     assert waits and all(0 < w <= news.GDELT_INTERVAL for w in waits)
     assert news.GDELT_INTERVAL >= 5.5
+
+
+def test_news_entries_are_unrated_until_tiers_apply(gdelt, run_id):
+    run, ids, _ = news.main(["Acme Corp"])
+    assert {common.read_evidence(run, i)["source_tier"] for i in ids} == {"unrated"}

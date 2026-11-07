@@ -37,7 +37,7 @@ def test_next_goes_round_two_then_stop_and_never_round_three():
 def test_status_reports_step_and_evidence_count(run_id):
     call("start", "AAPL")
     run = common.resolve_run(None)
-    common.write_evidence(run, tool="t", fact="f", value=1, unit="USD", period="p", source="s", url="u", locator="l")
+    common.write_evidence(run, tool="t", fact="f", value=1, unit="USD", period="p", source="s", url="u", locator="l", source_tier="T1")
     _, _, data = call("status")
     assert data["evidence_count"] == 1 and data["step"] == "round_1"
 

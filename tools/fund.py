@@ -206,9 +206,10 @@ def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
     unavailable: list[dict[str, str]] = []
 
     def record(fact: str, value: Any, unit: str, period: str, source: str, url: str, locator: str,
-               derived_from: list[str] | None = None, when: str | None = None) -> str:
+               derived_from: list[str] | None = None, when: str | None = None, tier: str = "T1") -> str:
         entry = common.write_evidence(run, tool="fund.py", fact=fact, value=value, unit=unit, period=period,
                                       source=source, url=url, locator=locator, derived_from=derived_from,
+                                      source_tier=tier,
                                       retrieved_at=when or retrieved_at)
         ids.append(entry["id"])
         return entry["id"]
@@ -232,7 +233,8 @@ def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
     peers_id = None
     if isinstance(peers, list) and peers:
         peers_id = record(f"Configured peers, {ticker}", ",".join(peers), "tickers", retrieved_at[:10],
-                          "config/peers.json (curated)", "config/peers.json", f"peers[{ticker}]", when=retrieved_at)
+                          "config/peers.json (curated)", "config/peers.json", f"peers[{ticker}]", when=retrieved_at,
+                          tier="unrated")  # our curated config, not an SEC fact
     else:
         peers = []
         unavailable.append({"metric": "peers", "reason": f"no peers configured for {ticker} in config/peers.json"})
@@ -247,7 +249,8 @@ def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
     etf_id = None
     if etf:
         etf_id = record(f"Sector ETF, {ticker}", etf, "ticker", retrieved_at[:10], "config/sector_etf.json (curated)",
-                        "config/sector_etf.json", f"overrides[{ticker}]", when=retrieved_at)
+                        "config/sector_etf.json", f"overrides[{ticker}]", when=retrieved_at,
+                        tier="unrated")  # our curated config, not an SEC fact
     else:
         unavailable.append({"metric": "sector_etf", "reason": f"no ETF mapping for {ticker}; pass --etf to precedent.py"})
 

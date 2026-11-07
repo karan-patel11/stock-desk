@@ -151,3 +151,14 @@ def test_cli_prints_only_json(prices, run_id, capsys):
     code = common.run_cli(lambda a: precedent.main(a, today=TODAY), ["NKE", "--dates", SESSIONS[10], "--windows", "5"])
     out = capsys.readouterr().out
     assert code == 0 and json.loads(out)["ok"] is True and out.count("\n") == 1
+
+
+def test_tiers_market_data_t2_event_dates_unrated(prices, run_id):
+    _, _, data = run("NKE", "--dates", SESSIONS[10], "--windows", "5", "--urls", "https://example.com/e")
+    event = data["events"][0]
+    assert common.read_evidence(run_id, event["id"])["source_tier"] == "unrated"
+    window = event["windows"]["5"]
+    stock = common.read_evidence(run_id, window["stock_return"]["id"])
+    assert stock["source_tier"] == "T2" and stock["source"].startswith("Yahoo Finance via yfinance (unofficial, disclosed)")
+    # the excess return is derived from the event date too, so it takes the weaker tier
+    assert common.read_evidence(run_id, window["excess"]["id"])["source_tier"] == "unrated"

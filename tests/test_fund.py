@@ -121,6 +121,10 @@ def test_evidence_entries_are_complete_and_traceable(sec, run_id):
     growth = common.read_evidence(run_id, row(data, "2026-08-31")["yoy"]["revenue"]["id"])
     assert growth["unit"] == "ratio" and len(growth["derived_from"]) == 2
     assert growth["source"].startswith("Derived by fund.py")
+    assert raw["source_tier"] == "T1" and growth["source_tier"] == "T1"
+    curated = {data.get("sector_etf_id"), data.get("peers_id")} - {None}
+    for entry in entries:
+        assert entry["source_tier"] == ("unrated" if entry["id"] in curated else "T1")
 
 
 def test_sic_peers_and_sector_etf(sec, run_id, _isolated_home):

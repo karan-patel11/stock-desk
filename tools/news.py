@@ -156,7 +156,7 @@ def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
             period=article["date"], source=f"{SOURCE} (headline from {article['domain'] or 'unknown domain'})",
             url=article["url"],
             locator=f"artlist seendate {article['seendate']}; country {article['country']}; language {article['language']}",
-            retrieved_at=retrieved_at)
+            retrieved_at=retrieved_at, source_tier="unrated")  # tiers not applied yet (Phase 2)
         ids.append(entry["id"])
         article_rows.append({"id": entry["id"], "title": article["title"], "date": article["date"],
                              "domain": article["domain"], "url": article["url"]})
@@ -175,7 +175,7 @@ def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
             value=round(mean_tone, 4), unit="tone", period=f"{first}/{last}",
             source=f"{SOURCE} timelinetone (mean of {points} daily average-tone points)",
             url=tone_result.url, locator=f"mode=timelinetone, timespan={args.days}d",
-            retrieved_at=tone_result.fetched_at)
+            retrieved_at=tone_result.fetched_at, source_tier="unrated")  # GDELT aggregate over all domains
         ids.append(entry["id"])
         tone_row = {"id": entry["id"], "value": entry["value"], "points": points}
     except ToolError as exc:

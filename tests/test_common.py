@@ -37,9 +37,9 @@ def install_get(monkeypatch, responses):
 
 def test_evidence_ids_are_sequential_and_fields_complete(run_id):
     first = common.write_evidence(run_id, tool="t.py", fact="A", value=1, unit="USD", period="2026-01-01",
-                                  source="s", url="https://x", locator="l")
+                                  source="s", url="https://x", locator="l", source_tier="T1")
     second = common.write_evidence(run_id, tool="t.py", fact="B", value=2.5, unit="ratio", period="2026-01-02",
-                                   source="s", url="https://x", locator="l", derived_from=["E1"])
+                                   source="s", url="https://x", locator="l", source_tier="T1", derived_from=["E1"])
     assert (first["id"], second["id"]) == ("E1", "E2")
     stored = common.read_evidence(run_id, "E2")
     assert tuple(stored.keys()) == common.EVIDENCE_FIELDS
@@ -56,12 +56,12 @@ def test_missing_and_malformed_ids_read_as_none(run_id):
 def test_non_finite_values_are_refused(run_id):
     with pytest.raises(ToolError) as err:
         common.write_evidence(run_id, tool="t", fact="bad", value=float("nan"), unit="USD", period="p",
-                              source="s", url="u", locator="l")
+                              source="s", url="u", locator="l", source_tier="T1")
     assert err.value.code == "no_data"
 
 
 def test_no_temp_files_left_behind(run_id, _isolated_home):
-    common.write_evidence(run_id, tool="t", fact="A", value=1, unit="USD", period="p", source="s", url="u", locator="l")
+    common.write_evidence(run_id, tool="t", fact="A", value=1, unit="USD", period="p", source="s", url="u", locator="l", source_tier="T1")
     leftovers = [p.name for p in (_isolated_home / "evidence" / run_id).iterdir() if p.name.startswith(".tmp")]
     assert leftovers == []
 
@@ -71,7 +71,7 @@ def _writer(args):
     os.environ["STOCKDESK_HOME"] = home
     for i in range(count):
         common.write_evidence(run, tool="race", fact=f"f{i}", value=i, unit="n", period="p",
-                              source="s", url="u", locator="l")
+                              source="s", url="u", locator="l", source_tier="T1")
 
 
 def test_concurrent_writers_get_unique_contiguous_ids(run_id, _isolated_home):
@@ -254,3 +254,41 @@ def test_normalize_ticker_and_dates():
     assert common.parse_date("2026-02-28") == "2026-02-28"
     with pytest.raises(ToolError):
         common.parse_date("2026-02-30")
+
+
+def test_primary_entry_needs_a_valid_source_tier(run_id):
+    for bad in (None, "T9", "official"):
+        with pytest.raises(ToolError) as err:
+            common.write_evidence(run_id, tool="t", fact="A", value=1, unit="USD", period="p", source="s",
+                                  url="u", locator="l", source_tier=bad)
+        assert err.value.code == "bad_input"
+
+
+def test_derived_entry_takes_the_weakest_input_tier(run_id):
+    def put(tier, parents=None):
+        return common.write_evidence(run_id, tool="t", fact="f", value=1, unit="USD", period="p", source="s",
+                                     url="u", locator="l", source_tier=tier, derived_from=parents)["id"]
+    sec, market, news = put("T1"), put("T2"), put("T4")
+    assert common.read_evidence(run_id, put("T1", [sec]))["source_tier"] == "T1"
+    # the tier the caller passes is ignored for a derived entry: it can never look stronger than its inputs
+    assert common.read_evidence(run_id, put("T1", [sec, market]))["source_tier"] == "T2"
+    assert common.read_evidence(run_id, put(None, [market, news, sec]))["source_tier"] == "T4"
+    assert common.read_evidence(run_id, put("T1", [sec, put("unrated")]))["source_tier"] == "unrated"
+    with pytest.raises(ToolError):
+        put("T1", ["E999"])
+
+
+def test_old_entry_without_tier_counts_as_unrated(run_id):
+    path = common.evidence_root() / run_id / "E1.json"
+    path.write_text(json.dumps({"id": "E1", "value": 1, "unit": "USD"}))  # an old ledger entry, no source_tier
+    derived = common.write_evidence(run_id, tool="t", fact="f", value=1, unit="USD", period="p", source="s",
+                                    url="u", locator="l", derived_from=["E1"])
+    assert derived["source_tier"] == "unrated"
+    assert json.loads(path.read_text()) == {"id": "E1", "value": 1, "unit": "USD"}  # never rewritten
+
+
+def test_weakest_tier_order():
+    assert common.weakest_tier(["T1", "T2"]) == "T2"
+    assert common.weakest_tier(["T3", "T4"]) == "T4"
+    assert common.weakest_tier(["T4", "excluded"]) == "excluded"
+    assert common.weakest_tier(["T1", "nonsense"]) == "unrated"

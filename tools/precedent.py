@@ -23,7 +23,7 @@ from typing import Any, Sequence
 import common
 from common import ToolError
 
-SOURCE = "Yahoo Finance daily bars via yfinance (unofficial), total-return adjusted (auto_adjust=True)"
+SOURCE = "Yahoo Finance via yfinance (unofficial, disclosed): daily bars, total-return adjusted (auto_adjust=True)"
 MAX_EVENTS = 12
 CONVENTION = ("day 0 = first session on/after the event date; base = close of the prior session; "
               "window N = close N sessions after the base; excess = stock return - ETF return")
@@ -114,9 +114,10 @@ def main(argv: Sequence[str], today: date | None = None) -> tuple[str | None, li
     used_events: set[str] = set()
 
     def record(fact: str, value: Any, unit: str, period: str, source: str, url: str, locator: str,
-               derived_from: list[str] | None = None) -> str:
+               derived_from: list[str] | None = None, tier: str = "T2") -> str:
         entry = common.write_evidence(run, tool="precedent.py", fact=fact, value=value, unit=unit, period=period,
                                       source=source, url=url, locator=locator, derived_from=derived_from,
+                                      source_tier=tier,
                                       retrieved_at=retrieved_at)
         ids.append(entry["id"])
         return entry["id"]
@@ -126,7 +127,8 @@ def main(argv: Sequence[str], today: date | None = None) -> tuple[str | None, li
             warnings.append(f"no source URL supplied for event {event}; the chief must not present it as sourced")
         event_id = record(f"Precedent event date for {ticker}", event, "date", event,
                           "Supplied by the caller from an opened source" if url else "Supplied by the caller (no source URL)",
-                          url or "none supplied", "event date as given to precedent.py")
+                          url or "none supplied", "event date as given to precedent.py",
+                          tier="unrated")  # a date the caller read on a web page, not market data
         row: dict[str, Any] = {"date": event, "id": event_id, "url": url, "windows": {}, "skipped": {}}
         for window in windows:
             result = event_returns(stock_close, etf_close, event, window)

@@ -140,7 +140,8 @@ def test_evidence_entries_have_correct_fields_and_derivations(patched):
     assert cross_entry["derived_from"] == [data["metrics"]["sma50"]["id"], data["metrics"]["sma200"]["id"]]
     for entry in common.list_evidence(run):
         assert tuple(entry.keys()) == common.EVIDENCE_FIELDS
-        assert entry["source"].startswith("Yahoo Finance") and "auto_adjust=False" in entry["locator"]
+        assert entry["source"].startswith("Yahoo Finance via yfinance (unofficial, disclosed)")
+        assert "auto_adjust=False" in entry["locator"] and entry["source_tier"] == "T2"
         assert entry["url"].startswith("https://finance.yahoo.com/quote/NKE")
 
 
