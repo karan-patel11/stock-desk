@@ -108,6 +108,20 @@ used by `scripts/build_template.py` to validate YAML.)
    `switch/desk-team.template.yaml` with params
    `ticker`, `stockdesk_home` (absolute path), `python` (the venv interpreter, for example `/abs/path/.venv/bin/python`)
    and `bridge`. The kickoff posts `@desk-chief analyze <ticker>`.
+5. **Check each agent's instructions, and fix them if needed.** On our server (Switch Console 0.40.1) the template's
+   `{python}` and `{stockdesk_home}` placeholders stayed as literal text inside the agents' instructions, although
+   `docs/TEMPLATES.md` says every string is filled in. Open each desk agent in Switch Console (**Your Agents → the agent
+   → Agent settings**). If its **Agent instructions** still contain `{python}` or `{stockdesk_home}`, put the filled-in
+   text on the clipboard from the repo folder, select all in the box, paste and **Save**. For desk-chief:
+   ```bash
+   python3 -c 'import sys; t = open(f"agents/{sys.argv[1]}.md").read(); print(t.replace("$STOCKDESK_HOME", sys.argv[2]).replace("$STOCKDESK_PY", sys.argv[3]), end="")' chief "$(pwd)" "$(pwd)/.venv/bin/python" | pbcopy
+   ```
+   Repeat with `fundamental`, `technical` and `sentiment` in place of `chief`. On Linux, use `xclip -selection
+   clipboard` instead of `pbcopy`.
+6. In the Slack channel, send each of these as its own plain message (not bulleted, not code-formatted):
+   `!reset @desk-chief`, `!reset @desk-fundamental`, `!reset @desk-technical`, `!reset @desk-sentiment`. Each agent
+   replies that it reset. Then start a run with `@desk-chief analyze NKE` and answer the goal question with, for
+   example, `@desk-chief 2`. `docs/desk-run-nke-2.md` shows a complete run.
 
 ## Commands
 
