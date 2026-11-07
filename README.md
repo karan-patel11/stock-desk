@@ -3,9 +3,30 @@
 A research desk for small investment teams, built on [Switch](https://github.com/sandbox-quantum/switch) for the
 WeMakeDevs "Flip the Switch" hackathon (Track 01, Best Business Workflow).
 
-Type `@desk-chief analyze NKE` in a Slack channel. Three analyst agents (fundamental, technical, sentiment) report with
-cited evidence IDs. The chief agent checks every cited number against an evidence ledger, cross-examines the analysts
-(two rounds at most), orders a precedent check, and posts a verdict that is saved in the room. Humans can interrupt at any time.
+Type `@desk-chief analyze NKE` (or `@chief analyze NKE medium, focus on debt`) in a Slack channel. The chief asks your
+goal (short, medium or long term, or all) unless you gave it. Three analyst agents (fundamental, technical, sentiment)
+report with cited evidence IDs. The chief checks every cited number against an evidence ledger, cross-examines the
+analysts (two rounds at most), orders a precedent check, and posts a verdict card in the channel with an outlook and a
+rule-based confidence for each horizon. The debate stays in the thread, and the full evidence table is saved in the
+room's verdict document. Humans can interrupt at any time.
+
+## Horizons
+
+| | Short | Medium | Long |
+|---|---|---|---|
+| Period | 1–4 weeks | 3–6 months | 1–3 years |
+| Evidence emphasized | technical momentum, 14-day news | earnings trend, guidance, 200-day trend, 30-day news | multi-year revenue, margins, debt; 90-day news for structural risks only |
+| Precedent window | 5 trading days | 30 and 90 trading days | 250 trading days |
+| Analysts that must agree for "high" | technical | fundamental and technical | fundamental |
+| Highest confidence | high | high | medium |
+
+The tools run once per analysis with the widest settings (`fund.py --quarters 12`, `tech.py --lookback 2y`,
+`news.py --days 90`, `precedent.py --windows 5,30,90,250`). Every horizon reads the same evidence. The goal only picks
+which horizon is the headline (`all` means medium).
+
+Until the news source tiers are built, sentiment reports one 90-day tone labelled "unweighted, tiers not applied".
+Short and medium therefore get `insufficient_coverage` from sentiment, which counts as "no data" and lowers their
+confidence by one level.
 
 **Research only, not financial advice.** The desk never says buy or sell and never gives price targets.
 
@@ -70,7 +91,8 @@ used by `scripts/build_template.py` to validate YAML.)
    If the first two fail, nothing else matters: fix addressing or the bridge first. Agents wake only on a mention by
    routing name. Slack completes agent names only on a paid plan with user-group permission (Switch's Slack guide);
    otherwise type them in full, because a typo looks like silence.
-4. Build and load the desk: `python3 scripts/build_template.py`, then load `switch/desk-team.template.yaml` with params
+4. Build and load the desk: `python3 scripts/build_template.py` (it rebuilds the template from `agents/*.md`), then load
+   `switch/desk-team.template.yaml` with params
    `ticker`, `stockdesk_home` (absolute path), `python` (the venv interpreter, for example `/abs/path/.venv/bin/python`)
    and `bridge`. The kickoff posts `@desk-chief analyze <ticker>`.
 
@@ -81,17 +103,38 @@ All tools print one JSON object on stdout (`{"ok":true,"run":...,"evidence":[...
 `--run` defaults to the current run.
 
 ```bash
-python tools/round.py start NKE | status | next | end
-python tools/fund.py NKE [--quarters 8]          # SEC XBRL: revenue, margins, EPS, debt, YoY (derived)
-python tools/tech.py NKE [--lookback 1y]         # SMA50/200, cross, RSI(14), ATR(14), volume ratio, 52-week range
-python tools/news.py "Nike" [--days 30]          # GDELT headlines, average tone, repeated title words
-python tools/precedent.py NKE --dates 2024-06-27,2024-12-19 [--etf XLY] [--windows 5,30] [--urls U1,U2]   # example dates; use ones you have verified
+python tools/round.py start NKE [--goal short|medium|long|all] | goal G | status | next | end
+python tools/fund.py NKE [--quarters 12]         # SEC XBRL: revenue, margins, EPS, debt, YoY (derived)
+python tools/tech.py NKE [--lookback 2y]         # SMA50/200, cross, RSI(14), ATR(14), volume ratio, 52-week range
+python tools/news.py "Nike" [--days 90]          # GDELT headlines, average tone, repeated title words
+python tools/precedent.py NKE --dates 2024-06-27,2024-12-19 [--etf XLY] [--windows 5,30,90,250] [--urls U1,U2]   # example dates; use ones you have verified
 python tools/verify.py E12 --value 8.1%          # or --text-file report.txt to scan a whole report
 python tools/verify.py E12 --withdraw            # record that the analyst withdrew the claim citing E12
 python tools/confidence.py --run RUN --horizon medium --direction bullish --fund bullish --tech neutral --sent no_data
 python tools/evidence_table.py --run RUN         # markdown table of every evidence entry, for the verdict doc
 python scripts/build_template.py [--check]
 ```
+
+## In the room
+
+Commands for desk-chief (or `@chief`, the room alias), any time during a run:
+
+| Command | What it does |
+|---|---|
+| `@desk-chief analyze NKE [short\|medium\|long\|all] [, focus on <topic>]` | Start a run; the focus goes to the analyst that owns it |
+| `@desk-chief explain E12` | What fact E12 is, its value, source and tier, whether it passed, who cited it |
+| `@desk-chief evidence` | The evidence table for the current run |
+| `@desk-chief ask technical: <question>` | Forwards the question to that analyst and posts the answer |
+| `@desk-chief verdict now` | Skip to the verdict |
+| `@desk-chief pause` / `resume` | Hold or continue the run |
+
+Every agent message ends with one line starting with 🔊: a plain-English summary of at most 25 words, with no evidence IDs.
+
+## Voice
+
+Dictate into Slack with Wispr Flow (or any dictation tool); no integration is needed. Add `desk-chief`,
+`desk-fundamental`, `desk-technical` and `desk-sentiment` to Wispr's dictionary: agents wake only on their exact name,
+so a misspelled name means silence. In the desk room, `@chief` also reaches desk-chief.
 
 ## Demo day
 
@@ -194,7 +237,7 @@ This is a hackathon project, not a data product.
 ## Layout
 
 ```
-agents/            instruction files, source of truth for the 4 agents (max 60 lines each)
+agents/            instruction files, source of truth for the 4 agents (chief max 80 lines, analysts max 60)
 switch/            desk-team.skeleton -> desk-team.template.yaml (generated), mention-test.template.yaml
 tools/             common fund tech news precedent verify round confidence evidence_table
 config/            peers.json sector_etf.json

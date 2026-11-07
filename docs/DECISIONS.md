@@ -39,13 +39,23 @@ Locked on 2026-11-06 (change prompt for the 2026-11-07 submission). Status says 
 - Blocked until a live GDELT check shows per-article tone exists. If it does not, news.py keeps its current output,
   labelled "unweighted, tiers not applied", and the fallback is decided by the project owner.
 
-## Horizons and output (Phase 3, not started)
+## Horizons and output (Phase 3, built)
 
-- Fixed horizons: short (1–4 weeks), medium (3–6 months), long (1–3 years). Tools run once with the widest settings;
-  every horizon reads the same evidence.
-- The chief asks the user's goal unless given; all three horizons are always computed.
-- Fixed verdict card format, three layers: card in the channel, debate in the thread, evidence table in the verdict doc.
-- Every agent message ends with one "🔊 " plain-English line of at most 25 words.
+- Fixed horizons: short (1–4 weeks), medium (3–6 months), long (1–3 years). Tools run once with the widest settings
+  (12 quarters, 2y, 90 days, precedent windows 5/30/90/250); every horizon reads the same evidence.
+  `precedent.py` now accepts windows up to 250 sessions.
+- `round.py` stores the goal (`start --goal`, `goal`). With no goal, next_action says to ask. The goal picks the
+  headline horizon (all: medium) and where round-2 questions focus; all three horizons are always computed.
+- desk-chief asks the goal question in fixed wording, sends one scope line per analyst, takes direction per horizon
+  from cited evidence, and takes confidence only from `confidence.py`.
+- Fixed verdict card format, three layers: card in the channel, debate in the thread, evidence table in the verdict
+  document. Posting the card as a new top-level message relies on what the 2026-11-05 desk run showed (the chief
+  started a top-level message); the Switch docs do not describe it.
+- Every agent message ends with one "🔊 " plain-English line of at most 25 words. In the card it comes just before the
+  disclaimer, as the card format shows.
+- Interim sentiment (until Phase 2): one 90-day tone labelled "unweighted, tiers not applied"; short and medium are
+  insufficient_coverage (so no_data for confidence); long reads the 90-day tone at -1.0 / +1.0.
+- Room alias `chief` for desk-chief, from the documented room `aliases:` field. Not yet seen working in Slack.
 
 ## Narrator (Phase 4, optional, needs go-ahead)
 
