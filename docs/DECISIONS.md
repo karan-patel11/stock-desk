@@ -65,6 +65,20 @@ Locked on 2026-11-06 (change prompt for the 2026-11-07 submission). Status says 
 - SLACK_BOT_TOKEN and SLACK_CHANNEL_ID come from `.env`. Tests use hand-written fixtures in Slack's documented
   response shape, because no real responses were recorded.
 
+## Known limitations
+
+- **Banks and insurers are unsupported.** Their quarterly revenue uses tags `fund.py` does not read (JPM:
+  `RevenuesNetOfInterestExpense`), so the freshness check returns revenue as no_data. Any other metric that is
+  still fresh (JPM: net income, EPS) is still reported.
+- **No partial-bar detection.** A bar from a session still trading can appear as the "last close". Run the desk
+  outside US market hours.
+- **No fiscal-quarter labels.** Quarters are named by their end date, not "Q1 FY27".
+- **A derived Q4 may combine filings from different dates:** the fiscal year from the latest 10-K minus the nine
+  months from an earlier 10-Q. Both inputs are cited.
+- **Amended filings (10-K/A, 10-Q/A) are ignored**, so a restatement filed only as an amendment is missed.
+- **Minor RSI/ATR drift from Wilder seeding:** the values move slightly with the lookback (ATR(14) for NKE: 1.241715
+  on 1 year of bars, 1.241751 on 2 years).
+
 ## CUT: not built
 
 - A separate research mode or second chat.

@@ -238,6 +238,15 @@ The news lists and weights will live in `config/source_tiers.json`. They are **o
 standard**, and are meant to be edited. Entries written before tiers existed have no `source_tier`; they are never
 rewritten, and they show as "not recorded".
 
+## Our audit
+
+Checking the fundamental guardrails against live SEC data (2026-11-07), `fund.py --quarters 12` for JPM returned
+quarters from 2012 to 2014 as the "latest 12". JPM stopped reporting quarterly `us-gaap:Revenues` after 2014 and
+now reports quarterly revenue only as `RevenuesNetOfInterestExpense`, a tag the tool does not read. Nothing flagged
+the 12-year-old figures. `fund.py` now checks freshness for each metric: if a metric's latest quarterly value ended
+more than 200 days ago (`STOCKDESK_MAX_FUND_AGE_DAYS`), that metric is no_data, marked "stale", and never filled
+from annual values. Banks and insurers remain unsupported (`docs/DECISIONS.md`, Known limitations).
+
 ## Data sources and disclosures
 
 - **SEC EDGAR** (needs `SEC_USER_AGENT`, under 10 requests per second).
