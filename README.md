@@ -26,11 +26,10 @@ Agents reason and talk. Python does every calculation and writes the evidence th
 
 | Item | State |
 |---|---|
-| All tools, ledger, verify, round cap, template builder | 138 offline tests pass (`pytest`, networking disabled) |
+| All tools, ledger, verify, confidence, evidence table, round cap, template builder | 204 offline tests pass (`pytest`, networking disabled) |
 | SEC parsing (`fund.py`) | Tested against **synthetic** fixtures for a fictional company (`tests/fixtures/build_synthetic.py`), not recorded SEC responses |
-| Live data (SEC, Yahoo, GDELT) | **Not run during the build** (the build sandbox had no access). Run `scripts/smoke_live.sh` once and fix surprises before the demo |
-| Switch template fields | Taken from the Switch docs quoted in the project context. The `params:` block and `{param}` substitution inside instructions are **unverified**; see the top of `switch/desk-team.skeleton` |
-| Slack setup through Switch | **Unverified**, follow Switch's own Slack bridge guide |
+| Live data (SEC, Yahoo, GDELT) | `scripts/smoke_live.sh NKE Nike` passed on 2026-11-06 |
+| Switch template and Slack | Stage 0 and two full NKE desk runs passed on Slack on 2026-11-05 (`docs/stage0-results.md`, `docs/desk-run-nke.md`) |
 
 ## Setup (about 10 minutes, excluding Slack)
 
@@ -88,6 +87,9 @@ python tools/tech.py NKE [--lookback 1y]         # SMA50/200, cross, RSI(14), AT
 python tools/news.py "Nike" [--days 30]          # GDELT headlines, average tone, repeated title words
 python tools/precedent.py NKE --dates 2024-06-27,2024-12-19 [--etf XLY] [--windows 5,30] [--urls U1,U2]   # example dates; use ones you have verified
 python tools/verify.py E12 --value 8.1%          # or --text-file report.txt to scan a whole report
+python tools/verify.py E12 --withdraw            # record that the analyst withdrew the claim citing E12
+python tools/confidence.py --run RUN --horizon medium --direction bullish --fund bullish --tech neutral --sent no_data
+python tools/evidence_table.py --run RUN         # markdown table of every evidence entry, for the verdict doc
 python scripts/build_template.py [--check]
 ```
 
@@ -128,20 +130,76 @@ visible. Clear the variable after the demo.
 - `config/peers.json` and `config/sector_etf.json` are small curated lists for demo tickers. An unmapped ticker needs `--etf`.
   Review them before relying on them.
 
+## Verification log
+
+`verify.py` never edits an evidence entry. Every check appends one line to `evidence/<run>/verifications.jsonl`:
+`{"id", "claimed", "result": "PASS"|"FAIL"|"WITHDRAWN", "detail", "checked_at"}`. The latest line per evidence ID wins,
+so a FAIL followed by a PASS (corrected figure) or WITHDRAWN (claim dropped) counts as corrected.
+
+**Citation pass rate** ("Citations verified: 14/14"): among the evidence IDs with at least one check, leaving out those
+whose latest result is WITHDRAWN, the share whose latest result is PASS. An **uncorrected failure** is an ID whose latest
+result is FAIL.
+
+## How confidence works
+
+Confidence is a label (low, medium, high) computed by `tools/confidence.py` from fixed rules. No model decides it, and the
+chief may not set or change it. There are no percentages.
+
+1. Every horizon starts at **medium**.
+2. It drops one level for each of these: an analyst had no data; the precedent check found fewer than 3 past events for
+   that horizon's window; no precedent check was run; a cited number failed verification and was not corrected; the news
+   tone points the other way from the outlook (only when the outlook is bullish or bearish).
+3. It becomes **high** only if nothing above applied, every checked citation passed, and the analysts that matter most
+   for that horizon agree with the outlook: technical for short term, fundamental and technical for medium term,
+   fundamental for long term.
+4. Long term is capped at **medium**: the desk only has about 3 years of filings and no valuation data.
+
+News tone can only lower confidence, never raise it. The analysts' stances are passed in; precedent counts and the
+verification results are read from the run's own ledger.
+
+## Source tiers
+
+Every evidence entry has a `source_tier`, strongest first:
+
+| Tier | Meaning | Written by |
+|---|---|---|
+| T1 | Regulatory or primary: legally accountable filings (SEC EDGAR) | `fund.py` |
+| T2 | Market data: Yahoo Finance via yfinance (unofficial, disclosed). Never called official | `tech.py`, `precedent.py` |
+| T3 | News: original reporting with named editors and a public corrections policy | news (once tiers apply) |
+| T4 | News: mostly syndicated, aggregated or contributor content, or narrow trade press | news (once tiers apply) |
+| company_statement | Issued by the company itself: used for event dates, never for sentiment | news (once tiers apply) |
+| excluded | Opinion, promotional, user-generated or auto-generated content, and all social media | news (once tiers apply) |
+| unrated | Anything not on a list, plus our own curated config (peers, sector ETF) and caller-supplied event dates | several |
+
+A derived entry (growth, margins, ratios, excess returns) takes the **weakest** tier among its inputs. A precedent excess
+return is therefore `unrated`, because one input is the event date the sentiment agent read on a web page. Until the news
+tiers are applied, every `news.py` entry is `unrated` and sentiment output is unweighted.
+
+The news lists and weights will live in `config/source_tiers.json`. They are **our curated judgment, not an industry
+standard**, and are meant to be edited. Entries written before tiers existed have no `source_tier`; they are never
+rewritten, and they show as "not recorded".
+
 ## Data sources and disclosures
 
-SEC EDGAR (needs `SEC_USER_AGENT`, under 10 requests per second), GDELT DOC 2.0, and daily prices through
-**yfinance, an unofficial Yahoo Finance client** that can be rate limited or change without notice. Stooq was dropped as a
-fallback because it now requires an API key. This is a hackathon project, not a data product.
+- **SEC EDGAR** (needs `SEC_USER_AGENT`, under 10 requests per second).
+- **Daily prices through yfinance, an unofficial Yahoo Finance client** that can be rate limited or change without notice.
+  Stooq was dropped as a fallback because it now requires an API key.
+- **GDELT DOC 2.0** is a metadata index of news articles (headlines, URLs, tone), not the articles themselves. It updates
+  about every 15 minutes, covers roughly the last 3 months, and allows one request per 5 seconds. The tools space GDELT
+  calls at least 6 seconds apart, across processes, cache them, and return `rate_limited` at once on a refusal: retrying
+  only lengthens the block (seen live: more than 20 minutes after a burst).
+
+This is a hackathon project, not a data product.
 
 ## Layout
 
 ```
 agents/            instruction files, source of truth for the 4 agents (max 60 lines each)
 switch/            desk-team.skeleton -> desk-team.template.yaml (generated), mention-test.template.yaml
-tools/             common fund tech news precedent verify round
+tools/             common fund tech news precedent verify round confidence evidence_table
 config/            peers.json sector_etf.json
 scripts/           build_template.py smoke_live.sh warm_demo.sh
+docs/              DECISIONS.md, Stage 0 runbook and results, desk run records
 tests/             offline tests and synthetic fixtures
 evidence/ cache/   generated, gitignored
 ```
