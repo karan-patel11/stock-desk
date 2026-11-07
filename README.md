@@ -1,31 +1,122 @@
 # Stock Desk
 
-**Every number cited. Every claim checked.** A stock research desk of four AI agents that works in your Slack channel,
-built on [Switch](https://github.com/sandbox-quantum/switch) for the WeMakeDevs "Flip the Switch" hackathon
-(Track 01, Best Business Workflow).
+**Every number cited. Every claim checked.**
 
-Research agents sound confident, and their numbers are often made up. Stock Desk makes that impossible by
-construction: an agent may only write a number that a Python tool put in an evidence ledger, and the chief agent checks
-every figure in code before anything reaches the channel.
+A research desk for small investment teams that runs inside the Slack channel they already use. One message starts
+it. Four AI agents split the work, argue it out in a thread, and every figure is checked against an evidence ledger
+in code before a verdict reaches the team. Built on [Switch](https://github.com/sandbox-quantum/switch) for the
+WeMakeDevs "Flip the Switch" hackathon, **Track 01: Best Business Workflow**.
 
-You type `@desk-chief analyze NKE`. The chief asks your goal (1–4 weeks, 3–6 months, 1–3 years, or all), sends three
-analysts a scoped brief, verifies each report line by line, runs two rounds of questions and a precedent check, and posts
-a verdict card in the channel. The outlook per horizon is the chief's judgment from verified evidence; the confidence
-comes from a fixed rule (`tools/confidence.py`) that no model can override. The debate stays in the thread, and the
-full evidence table is saved in the room.
+**[Live site](https://karan-patel11.github.io/stock-desk/)** · **[A complete real run](docs/desk-run-nke-2.md)** ·
+**[Decisions and known limits](docs/DECISIONS.md)**
 
-| From a real run (`r-20261107-05`, 7 Nov 2026, `docs/desk-run-nke-2.md`) | |
+> Research only, not financial advice. Outlooks are Bullish, Bearish or Neutral. The desk never says buy or sell and
+> never gives price targets.
+
+## The problem
+
+A small investment team starts the day with the same chore: pull the latest filings, check the price trend, skim the
+news, then argue about it in chat. The numbers get copied by hand from a dozen tabs, the reasoning is lost in the
+scroll, and nobody can say later where "revenue down 4%" came from.
+
+AI assistants make this faster and worse at the same time. They write a confident summary in seconds, and some of
+its numbers are invented. A team cannot act on research it cannot check.
+
+## The workflow
+
+Stock Desk turns that morning routine into one auditable workflow, run by people and agents together in one Slack
+channel.
+
+| Step | Who | What happens | Where the team sees it |
+|---|---|---|---|
+| 1. Ask | An analyst | Types `@desk-chief analyze NKE` | The channel |
+| 2. Set the goal | desk-chief and the analyst | The chief asks: 1–4 weeks, 3–6 months, 1–3 years, or all. The analyst replies `@desk-chief 2` | The run's thread |
+| 3. Brief the specialists | desk-chief | One message gives three agents a scoped brief: fundamentals from SEC filings, technicals from prices, sentiment from news | The thread |
+| 4. Gather evidence | The three analysts | Each runs one Python tool. The tool writes every fact to an evidence ledger with its source, tier and link (E1, E2 …) | The ledger, on the host machine |
+| 5. Check every number | desk-chief, using `verify.py` | Each report is checked line by line against the ledger. A wrong number goes back to the analyst who wrote it, to be corrected or withdrawn | The thread |
+| 6. Cross-examine | desk-chief | Up to two rounds of targeted questions, then a precedent check: how the stock moved after past comparable events | The thread |
+| 7. Decide | desk-chief, using `confidence.py` | An outlook for each time horizon, with a confidence level set by a fixed rule, not by the model | A verdict card in the channel |
+| 8. Keep the record | Switch | The card and the full evidence table are saved as a room document. The next run on the same ticker quotes it | The room's documents |
+
+People stay in charge the whole time. Anyone in the room can type `@desk-chief explain E159` to see where a number
+came from, `ask technical: …` to question one analyst, `pause`, or `verdict now`. Any other message posted during a
+run is treated as new evidence.
+
+## What the team gets
+
+- **Research they can check.** In the run below, 28 of 28 citations were verified against the ledger, with 54 checks
+  logged and none failed. Each fact links to its SEC filing or price history.
+- **Mistakes caught before they spread.** In an earlier run the sentiment agent quoted "17%" straight from a headline.
+  No tool had measured it, so the verifier failed it and sent it back, and the agent corrected the report.
+- **A decision in minutes, not a morning.** The full run, two rounds included, took about 7 minutes.
+- **Confidence they can trust.** High confidence needs the key analysts to agree, every citation to pass and at least
+  three precedents. Missing data lowers it. The rule is in `tools/confidence.py` and the chief cannot override it.
+- **An audit trail.** Every fact, every check and every correction is kept: the evidence ledger, the verification log
+  and the saved verdict. Nothing is overwritten.
+- **Honest gaps.** When a source fails, the desk says "no data" and lowers confidence. When news was refused during the
+  run below, long-term confidence dropped to low instead of the desk guessing a mood.
+
+## A real run: NKE, 7 November 2026
+
+| | |
 |---|---|
-| Citations verified | 28/28, with 54 checks logged and none failed |
-| Evidence entries in the ledger | 369, each with source, tier, link and retrieval time |
-| Verdict (goal: 3–6 months) | Bearish, confidence high: revenue −4.3259% YoY (SEC, T1) [E159]; close 38.59 below the 200-day average 45.41 (T2) [E165, E167] |
-| When data failed | GDELT refused the news tone; the desk said "no data" and long-term confidence dropped to low |
-| Time | about 7 minutes |
+| Goal | Medium term (3–6 months) |
+| Verdict | **Bearish, confidence high.** Revenue fell 4.3259% year over year (SEC filing, tier T1) [E159]. The close of 38.59 is below the 200-day average of 45.41 (price data, tier T2) [E165, E167]. After 5 past comparable reports, NKE trailed its sector by 0.085416 over 90 sessions [E366] |
+| Other horizons | Short term (1–4 weeks): Neutral, high. Long term (1–3 years): Neutral, low (sentiment: no data) |
+| Citations verified | 28/28 |
+| Evidence entries | 369, each with source, tier, link and retrieval time |
+| Time | About 7 minutes |
 
-**Live site: https://karan-patel11.github.io/stock-desk/** — an illustrated walkthrough of the desk, one chat from start to end, a real run and how to use it (source: `docs/site/index.html`).
+The full thread, the checks and what went wrong are in [`docs/desk-run-nke-2.md`](docs/desk-run-nke-2.md).
 
-**Research only, not financial advice.** Outlooks are Bullish, Bearish or Neutral; the desk never says buy or sell and
-never gives price targets.
+## Why it runs on Switch
+
+Switch is not a wrapper here; the workflow is made of it.
+
+- **Routing by mention.** `@desk-chief` wakes exactly one agent. The chief briefs three analysts in one message, and
+  each reply wakes the chief again. Analysts answer only the chief.
+- **One thread per run.** Reports, challenges, corrections and round two stay in the run's thread. Only the verdict
+  card is posted to the channel.
+- **Memory in room documents.** Each verdict is saved in the room. The next run on the same ticker finds it and quotes
+  it first, so the team sees how the view changed.
+- **Shared rules.** The room's instructions reach every agent that joins: cite every number, no advice, two rounds.
+- **Operable from chat.** `!reset`, `!list-documents` and aliases work without leaving Slack.
+
+Without the room there is no desk: no routing between agents, no shared thread, no memory between runs.
+
+## How it is built
+
+```
+Slack channel  ->  Switch room  ->  4 Claude Code agents  ->  Python tools  ->  evidence ledger
+(the team)         (routing,        desk-chief                fund.py           evidence/<run>/E<n>.json
+                    threads,         desk-fundamental          tech.py           verifications.jsonl
+                    saved verdicts)  desk-technical            news.py           confidence.json
+                                     desk-sentiment            precedent.py
+                                                               verify.py, confidence.py, round.py
+```
+
+Agents reason and talk. Python does every calculation and writes the evidence the agents cite. `verify.py`,
+`confidence.py` and `round.py` (the two-round cap) enforce the rules in code, not in prompts. 281 offline tests cover
+them.
+
+## Try it
+
+You need Python 3.11+, Switch Console, and a Slack workspace connected to Switch.
+
+```bash
+git clone https://github.com/karan-patel11/stock-desk.git && cd stock-desk
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt && pytest -q         # 281 tests, offline
+cp .env.example .env                                  # set SEC_USER_AGENT to your name and real email
+scripts/smoke_live.sh NKE                             # one live call to each data source
+```
+
+Then load `switch/desk-team.template.yaml` in Switch Console and type `@desk-chief analyze NKE` in the channel. The
+full steps, including two things to check in Switch Console, are under [Switch and Slack setup](#switch-and-slack-setup).
+
+---
+
+# Technical reference
 
 ## Horizons
 
@@ -58,19 +149,6 @@ whole-number tone bins (`docs/DECISIONS.md`, Sentiment). The sentiment agent sti
 evidence ID, and may describe an article only after opening it.
 
 **Research only, not financial advice.** The desk never says buy or sell and never gives price targets.
-
-## How it fits together
-
-```
-Slack channel  ->  Switch room  ->  4 Claude Code agents  ->  Python tools  ->  evidence ledger
-(humans)           (instructions,   desk-chief                fund tech news     evidence/<run>/E<n>.json
-                    saved verdicts)  desk-fundamental          precedent verify
-                                     desk-technical            round
-                                     desk-sentiment
-```
-
-Agents reason and talk. Python does every calculation and writes the evidence the agents cite. `verify.py` and
-`round.py` enforce the rules in code (number matching, the two-round cap), not in prompts.
 
 ## What has and has not been verified
 
