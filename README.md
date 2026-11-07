@@ -22,6 +22,8 @@ full evidence table is saved in the room.
 | When data failed | GDELT refused the news tone; the desk said "no data" and long-term confidence dropped to low |
 | Time | about 7 minutes |
 
+An illustrated walkthrough of the desk, the run and how to use it is in `docs/site/index.html` (open it in a browser).
+
 **Research only, not financial advice.** Outlooks are Bullish, Bearish or Neutral; the desk never says buy or sell and
 never gives price targets.
 
@@ -320,7 +322,7 @@ switch/            desk-team.skeleton -> desk-team.template.yaml (generated), me
 tools/             common fund tech news precedent verify round confidence evidence_table
 config/            peers.json sector_etf.json news_names.json
 scripts/           build_template.py smoke_live.sh warm_demo.sh narrator.py
-docs/              DECISIONS.md, Stage 0 runbook and results, desk run records
+docs/              DECISIONS.md, Stage 0 runbook and results, desk run records, site/ (presentation page)
 tests/             offline tests and synthetic fixtures
 evidence/ cache/   generated, gitignored
 ```

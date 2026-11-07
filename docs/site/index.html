@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Stock Desk: a Switch-based research desk where every number is cited and checked in code.">
+<title>Stock Desk</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Manrope:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+/* Layout: alternating night-green and paper bands, a narrow reading column, glass panels for real desk output. */
+:root {
+  --night: #0c1714;        /* deep green-black: dark bands */
+  --night-2: #13221d;      /* raised panel on dark */
+  --paper: #f2f3ef;        /* cool off-white: light bands */
+  --paper-2: #e6e9e2;      /* raised panel on light */
+  --ink: #0d120f;          /* text on paper */
+  --ink-soft: #4b5650;     /* secondary text on paper */
+  --mist: #e9efe9;         /* text on night */
+  --mist-soft: rgba(233,239,233,.64);
+  --mist-faint: rgba(233,239,233,.38);
+  --line-dark: rgba(233,239,233,.12);
+  --line-light: rgba(13,18,15,.12);
+  --brass: #c8b07a;        /* the one accent: evidence IDs and key marks */
+  --brass-ink: #7a6331;    /* accent readable on paper */
+  --pass: #7fb48e;         /* verified */
+  --warn: #d9a35b;         /* gap / no data */
+  --display: "EB Garamond", Georgia, "Times New Roman", serif;
+  --body: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { background: var(--night); color: var(--mist); font-family: var(--body); font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--night); }
+a { color: inherit; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.band { padding-block: 96px; }
+.band.light { background: var(--paper); color: var(--ink); }
+.eyebrow { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; font-weight: 500; color: var(--mist-soft); }
+.light .eyebrow { color: var(--ink-soft); }
+h1, h2, h3 { font-family: var(--display); font-weight: 400; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(44px, 7.4vw, 88px); line-height: 1.02; letter-spacing: -0.02em; }
+h2 { font-size: clamp(34px, 4.8vw, 58px); line-height: 1.06; letter-spacing: -0.018em; }
+h3 { font-size: 26px; line-height: 1.15; letter-spacing: -0.01em; }
+.dim { color: var(--mist-faint); }
+.light .dim { color: #8a948e; }
+.lede { font-size: 19px; color: var(--mist-soft); max-width: 60ch; }
+.light .lede { color: var(--ink-soft); }
+p { margin: 0; }
+.id { font-family: var(--mono); font-size: .86em; color: var(--brass); white-space: nowrap; }
+.light .id { color: var(--brass-ink); }
+code, .mono { font-family: var(--mono); font-size: .9em; }
+
+/* nav */
+.nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: linear-gradient(var(--night), rgba(12,23,20,.86)); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line-dark); }
+.nav .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 14px; }
+.brand { font-family: var(--display); font-size: 24px; letter-spacing: -0.01em; text-decoration: none; }
+.pills { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--line-dark); border-radius: 999px; background: rgba(255,255,255,.04); flex-wrap: wrap; }
+.pills a { text-decoration: none; font-size: 13.5px; padding: 6px 14px; border-radius: 999px; color: var(--mist-soft); }
+.pills a:hover, .pills a:focus-visible { color: var(--mist); background: rgba(255,255,255,.08); outline: none; }
+.btn { display: inline-flex; align-items: center; gap: 8px; font: 500 15px/1 var(--body); padding: 14px 22px; border-radius: 999px; text-decoration: none; border: 1px solid transparent; cursor: pointer; }
+.btn.primary { background: var(--mist); color: var(--night); }
+.btn.ghost { border-color: var(--line-dark); color: var(--mist); background: rgba(255,255,255,.05); }
+.btn:focus-visible { outline: 2px solid var(--brass); outline-offset: 3px; }
+@media (max-width: 760px) { .pills { display: none; } }
+
+/* hero */
+.hero { position: relative; overflow: hidden; padding-block: 88px 96px; }
+.hero::before { content: ""; position: absolute; inset: 0; background:
+  radial-gradient(60% 70% at 78% 30%, rgba(78,120,98,.42), transparent 70%),
+  radial-gradient(40% 50% at 15% 85%, rgba(200,176,122,.10), transparent 70%),
+  radial-gradient(80% 60% at 50% 110%, rgba(30,60,48,.8), transparent 70%); pointer-events: none; }
+.hero .wrap { position: relative; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: 56px; align-items: center; }
+.hero .copy { display: grid; gap: 28px; min-width: 0; }
+.cta { display: flex; gap: 12px; flex-wrap: wrap; }
+@media (max-width: 900px) { .hero .wrap { grid-template-columns: 1fr; } }
+
+/* glass panel: real desk output */
+.panel { background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03)); border: 1px solid var(--line-dark); border-radius: 18px; padding: 22px; min-width: 0; box-shadow: 0 30px 80px -40px rgba(0,0,0,.7); }
+.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; font-size: 12px; color: var(--mist-faint); letter-spacing: .06em; text-transform: uppercase; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line-dark); color: var(--mist-soft); text-transform: none; letter-spacing: 0; }
+.chip.pass { color: var(--pass); border-color: rgba(127,180,142,.35); }
+.chip.warn { color: var(--warn); border-color: rgba(217,163,91,.35); }
+.card-text { font-family: var(--mono); font-size: 12.5px; line-height: 1.65; color: var(--mist); white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+.card-text b { color: var(--brass); font-weight: 500; }
+.card-text .soft { color: var(--mist-soft); }
+
+/* stats */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line-dark); border: 1px solid var(--line-dark); border-radius: 16px; overflow: hidden; margin-top: 48px; }
+.stat { background: var(--night); padding: 24px; display: grid; gap: 4px; }
+.stat .n { font-family: var(--display); font-size: 44px; line-height: 1; font-variant-numeric: tabular-nums; }
+.stat .k { font-size: 13px; color: var(--mist-soft); }
+@media (max-width: 760px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* steps (a real sequence) */
+.steps { display: grid; gap: 0; margin-top: 48px; border-top: 1px solid var(--line-light); }
+.step { display: grid; grid-template-columns: 64px minmax(0, 1fr) minmax(0, 1.1fr); gap: 24px; padding-block: 28px; border-bottom: 1px solid var(--line-light); align-items: start; }
+.step .num { font-family: var(--display); font-size: 30px; color: var(--brass-ink); line-height: 1; }
+.step h3 { font-size: 24px; }
+.step p { color: var(--ink-soft); }
+.step .who { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); margin-top: 6px; }
+@media (max-width: 760px) { .step { grid-template-columns: 44px minmax(0, 1fr); } .step p { grid-column: 2; } }
+
+/* flow diagram */
+.flow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-top: 40px; }
+.node { border: 1px solid var(--line-light); border-radius: 14px; padding: 16px; background: #fff; display: grid; gap: 6px; align-content: start; min-width: 0; position: relative; }
+.node .t { font-weight: 600; font-size: 14px; }
+.node .s { font-size: 13px; color: var(--ink-soft); }
+.node.key { border-color: var(--brass-ink); }
+@media (max-width: 900px) { .flow { grid-template-columns: 1fr; } }
+
+/* thread */
+.thread { display: grid; gap: 14px; margin-top: 40px; }
+.msg { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 14px; padding: 18px; border: 1px solid var(--line-dark); border-radius: 14px; background: var(--night-2); }
+.av { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; font: 600 13px var(--body); color: var(--night); }
+.av.c { background: #8fcf9a; } .av.f { background: #b9e0a8; } .av.t { background: #f2b27a; } .av.s { background: #c7b4f0; } .av.h { background: var(--mist); }
+.msg .who { font-weight: 600; font-size: 14px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.msg .who span { font-weight: 400; color: var(--mist-faint); font-size: 12px; }
+.msg .body { font-size: 14.5px; color: var(--mist-soft); margin-top: 4px; overflow-wrap: anywhere; }
+.msg .body .mono { color: var(--mist); }
+.voice { display: block; margin-top: 8px; color: var(--mist); }
+
+/* guardrails grid */
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 48px; }
+.g { background: #fff; border: 1px solid var(--line-light); border-radius: 16px; padding: 24px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.g .tag { font-family: var(--mono); font-size: 12px; color: var(--brass-ink); }
+.g p { color: var(--ink-soft); font-size: 15px; }
+@media (max-width: 900px) { .grid3 { grid-template-columns: 1fr; } }
+
+/* tables */
+.tbl { overflow-x: auto; margin-top: 32px; border: 1px solid var(--line-dark); border-radius: 14px; }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; min-width: 560px; }
+th, td { text-align: left; padding: 14px 16px; border-bottom: 1px solid var(--line-dark); vertical-align: top; }
+th { font-weight: 500; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--mist-faint); }
+tr:last-child td { border-bottom: 0; }
+td.num { font-variant-numeric: tabular-nums; }
+.light .tbl { border-color: var(--line-light); background: #fff; }
+.light th, .light td { border-color: var(--line-light); }
+.light th { color: var(--ink-soft); }
+.lvl { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12.5px; border: 1px solid currentColor; }
+.lvl.high { color: var(--pass); } .lvl.low { color: var(--warn); }
+
+/* use it */
+.tabs { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--line-light); border-radius: 999px; margin-top: 36px; background: #fff; flex-wrap: wrap; }
+.tabs button { font: 500 14px var(--body); border: 0; background: transparent; color: var(--ink-soft); padding: 9px 18px; border-radius: 999px; cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--paper); }
+.tabs button:focus-visible { outline: 2px solid var(--brass-ink); outline-offset: 2px; }
+.howto { margin-top: 28px; display: grid; gap: 14px; }
+.how { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 18px; padding: 20px; border: 1px solid var(--line-light); border-radius: 14px; background: #fff; }
+.how .n { font-family: var(--display); font-size: 26px; color: var(--brass-ink); line-height: 1.1; }
+.how h4 { margin: 0 0 6px; font-size: 16px; font-weight: 600; }
+.how p { color: var(--ink-soft); font-size: 15px; }
+.how .note { margin-top: 8px; font-size: 14px; color: var(--ink-soft); border-left: 2px solid var(--brass-ink); padding-left: 12px; }
+.cmd { margin-top: 10px; display: flex; align-items: stretch; gap: 8px; min-width: 0; }
+.cmd pre { flex: 1; min-width: 0; margin: 0; overflow-x: auto; background: var(--night); color: var(--mist); font-family: var(--mono); font-size: 13px; line-height: 1.55; padding: 12px 14px; border-radius: 10px; }
+.copy { font: 500 12.5px var(--body); border: 1px solid var(--line-light); background: var(--paper); color: var(--ink); border-radius: 10px; padding: 0 12px; cursor: pointer; flex: 0 0 auto; }
+.copy:focus-visible { outline: 2px solid var(--brass-ink); outline-offset: 2px; }
+.cmds { margin-top: 12px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 1px; background: var(--line-light); border: 1px solid var(--line-light); border-radius: 12px; overflow: hidden; }
+.cmds > div { background: #fff; padding: 12px 14px; font-size: 14.5px; min-width: 0; }
+.cmds .c { font-family: var(--mono); font-size: 13px; color: var(--ink); overflow-wrap: anywhere; }
+@media (max-width: 640px) { .cmds { grid-template-columns: 1fr; } .cmds .c { background: var(--paper-2); } }
+
+/* limits */
+.limits { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 48px; margin-top: 40px; }
+.limits div { padding-block: 18px; border-top: 1px solid var(--line-dark); }
+.limits h4 { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
+.limits p { color: var(--mist-soft); font-size: 15px; }
+@media (max-width: 760px) { .limits { grid-template-columns: 1fr; } }
+
+footer { border-top: 1px solid var(--line-dark); padding-block: 48px; }
+footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 24px; align-items: baseline; }
+footer p { color: var(--mist-soft); font-size: 14px; }
+
+.section-head { display: grid; gap: 18px; max-width: 760px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top">Stock Desk</a>
+    <nav class="pills" aria-label="Sections">
+      <a href="#how">How it works</a>
+      <a href="#run">A real run</a>
+      <a href="#guardrails">Guardrails</a>
+      <a href="#use">Use it</a>
+    </nav>
+    <a class="btn ghost" href="https://github.com/karan-patel11/stock-desk" target="_blank" rel="noopener">GitHub</a>
+  </div>
+</header>
+
+<main id="top">
+<section class="hero">
+  <div class="wrap">
+    <div class="copy">
+      <p class="eyebrow">Built on Switch · Slack · Four Claude Code agents</p>
+      <h1>Every number cited.<br><span class="dim">Every claim checked.</span></h1>
+      <p class="lede">A stock research desk that lives in your Slack channel. Three analyst agents report, a chief agent checks every figure against an evidence ledger in code, and a verdict card lands in the channel with a confidence level no model can inflate.</p>
+      <div class="cta">
+        <a class="btn primary" href="#run">See a real run</a>
+        <a class="btn ghost" href="#use">How to use it</a>
+      </div>
+      <p class="eyebrow" style="letter-spacing:.08em">Research only, not financial advice</p>
+    </div>
+    <div class="panel" aria-label="Verdict card from run r-20261107-05">
+      <div class="panel-head"><span>#desk-nke · verdict card</span><span class="chip pass">Citations verified 28/28</span></div>
+<pre class="card-text">NKE · Your goal: Medium term (3–6 months)
+<b>▶ MEDIUM TERM (3–6 months): BEARISH · Confidence: high</b>
+<span class="soft">  Why: Revenue is still shrinking and price sits below its
+  200-day average, and NKE lagged its sector over 90 sessions
+  after past comparable reports.</span>
+  Short term (1–4 weeks): Neutral · Confidence: high
+  Long term (1–3 years): Neutral · Confidence: low (sentiment: no data)
+3 proofs:
+ 1. Revenue fell 4.3259% YoY, quarter ended 2026-08-31
+    (SEC EDGAR, T1, verified) <b>[E159]</b>
+ 2. Close 38.59 is below the 200-day average of 45.41
+    (Yahoo Finance via yfinance, T2, verified) <b>[E165, E167]</b>
+ 3. Mean 90-session excess return vs XLY after 5 events: -0.085416
+    (derived by precedent.py, unrated, verified) <b>[E366]</b>
+<span class="soft">Research only, not financial advice.</span></pre>
+    </div>
+  </div>
+</section>
+
+<section class="band light">
+  <div class="wrap section-head">
+    <p class="eyebrow">The problem</p>
+    <h2>Research agents sound confident.<br><span class="dim">Their numbers are often made up.</span></h2>
+    <p class="lede">An analyst who quotes "revenue up 8%" has to be able to show where 8% came from. Stock Desk makes that a rule enforced in code: an agent may only write a number that a tool put in the ledger, and the chief checks each one before anything reaches the channel.</p>
+  </div>
+</section>
+
+<section class="band light" id="how" style="padding-top:0">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">How it works</p>
+      <h2>A desk of four agents, one Switch room.</h2>
+    </div>
+    <div class="flow" role="list" aria-label="System flow">
+      <div class="node" role="listitem"><span class="t">Slack channel</span><span class="s">You type <code>@desk-chief analyze NKE</code>. Teammates watch and can interrupt.</span></div>
+      <div class="node key" role="listitem"><span class="t">Switch room</span><span class="s">Routes mentions to agents, keeps the debate in one thread, stores verdicts as room documents.</span></div>
+      <div class="node" role="listitem"><span class="t">desk-chief</span><span class="s">Runs two rounds, verifies, orders a precedent check, writes the card.</span></div>
+      <div class="node" role="listitem"><span class="t">Three analysts</span><span class="s">Fundamental (SEC filings), technical (prices), sentiment (news). They answer only the chief.</span></div>
+      <div class="node key" role="listitem"><span class="t">Evidence ledger</span><span class="s">Python tools write every fact as <span class="id">E1</span>, <span class="id">E2</span> … with source, tier and link.</span></div>
+    </div>
+    <div class="steps">
+      <div class="step"><span class="num">01</span><div><h3>Ask the goal</h3><p class="who">desk-chief</p></div><p>Short term (1–4 weeks), medium (3–6 months), long (1–3 years) or all. All three horizons are always computed; the goal picks the headline.</p></div>
+      <div class="step"><span class="num">02</span><div><h3>Round 1: scoped reports</h3><p class="who">three analysts</p></div><p>Each analyst gets a scope line and runs one tool with the widest settings: 12 quarters of SEC filings, 2 years of prices, 90 days of news.</p></div>
+      <div class="step"><span class="num">03</span><div><h3>Verify every number</h3><p class="who">verify.py</p></div><p>Each report is checked line by line against the ledger. A wrong figure goes back to the analyst with the stored value; it is corrected or withdrawn, and the log keeps both.</p></div>
+      <div class="step"><span class="num">04</span><div><h3>Round 2 and precedent</h3><p class="who">desk-chief</p></div><p>One to three targeted questions, then past comparable events with opened source pages, and the stock's return against its sector after each one.</p></div>
+      <div class="step"><span class="num">05</span><div><h3>Verdict card</h3><p class="who">confidence.py</p></div><p>Outlook per horizon is the chief's judgment from verified evidence. Confidence comes only from a fixed rule. The card goes to the channel; the full evidence table is saved in the room.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="run">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">A real run · r-20261107-05 · 7 Nov 2026</p>
+      <h2>Seven minutes in #desk-nke.</h2>
+      <p class="lede">Excerpts from the actual Slack thread. Every number below is in the run's ledger. <a href="https://github.com/karan-patel11/stock-desk/blob/main/docs/desk-run-nke-2.md" target="_blank" rel="noopener">Read the full run record</a>.</p>
+    </div>
+    <div class="thread">
+      <div class="msg"><div class="av h">KP</div><div><div class="who">Karan <span>11:31 PM</span></div><div class="body"><span class="mono">@desk-chief analyze NKE</span></div></div></div>
+      <div class="msg"><div class="av c">C</div><div><div class="who">desk-chief <span>quotes the last saved verdict, opens a new run</span></div><div class="body">What's your goal for NKE? Reply with a number: 1 Short-term trade (1–4 weeks) · 2 Medium-term position (3–6 months) · 3 Long-term investment (1–3 years) · or 'all'.</div></div></div>
+      <div class="msg"><div class="av t">T</div><div><div class="who">desk-technical <span>round 1</span></div><div class="body">Stance: short=neutral · medium=bearish · long=bearish<br>200-day trend: close 38.59 is below SMA200 45.41 <span class="id">[E165, E167]</span> · RSI(14) at 54.88 <span class="id">[E169]</span><span class="voice">🔊 Technical: price is above its 50-day average but below its 200-day average; momentum is middling.</span></div></div></div>
+      <div class="msg"><div class="av c">C</div><div><div class="who">desk-chief <span>verification</span></div><div class="body">Fundamental report checked: all 16 numbers match the evidence, and all 24 citations pass. Accepted. Gaps to carry forward: no data on guidance or operating income.</div></div></div>
+      <div class="msg"><div class="av s">S</div><div><div class="who">desk-sentiment <span>round 1</span></div><div class="body">Tone: no data. GDELT rate-limited the request (HTTP 429). None of the returned headlines name Nike, so I built no theme from them.<span class="voice">🔊 Sentiment: no usable Nike news this run; the tone feed was rate-limited.</span></div></div></div>
+      <div class="msg"><div class="av c">C</div><div><div class="who">desk-chief <span>verdict</span></div><div class="body">Card posted in the channel, saved as <span class="mono">verdict-NKE-2026-11-07</span>. Confidence from the tool for each horizon. Run closed.</div></div></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="n">28/28</span><span class="k">citations verified</span></div>
+      <div class="stat"><span class="n">54</span><span class="k">checks logged, none failed</span></div>
+      <div class="stat"><span class="n">369</span><span class="k">evidence entries in the ledger</span></div>
+      <div class="stat"><span class="n">5</span><span class="k">precedent events, each with an opened source</span></div>
+    </div>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>Horizon</th><th>Outlook</th><th>Confidence</th><th>Why, from confidence.py</th></tr></thead>
+        <tbody>
+          <tr><td>Short · 1–4 weeks</td><td>Neutral</td><td><span class="lvl high">high</span></td><td>Technical agrees; sentiment not measured for 14 days (no penalty)</td></tr>
+          <tr><td>Medium · 3–6 months (goal)</td><td>Bearish</td><td><span class="lvl high">high</span></td><td>Fundamental and technical both bearish; 5 precedent events; all citations pass</td></tr>
+          <tr><td>Long · 1–3 years</td><td>Neutral</td><td><span class="lvl low">low</span></td><td>Sentiment: no data (the 90-day tone was refused), so one level off</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="band light" id="guardrails">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Guardrails</p>
+      <h2>Enforced in code, not in a prompt.</h2>
+    </div>
+    <div class="grid3">
+      <div class="g"><span class="tag">evidence/&lt;run&gt;/E&lt;n&gt;.json</span><h3>No number without an ID</h3><p>Tools write every fact with its value, unit, period, source, link and tier. Agents never calculate or recall a number; they cite the ID.</p></div>
+      <div class="g"><span class="tag">verify.py</span><h3>Every figure checked</h3><p>Reports are scanned for numbers. Each must match a cited entry within the rounding it shows; uncited numbers fail. Corrections and withdrawals are logged, never overwritten.</p></div>
+      <div class="g"><span class="tag">confidence.py</span><h3>Confidence by rule</h3><p>Starts at medium. One level off for missing data, fewer than 3 precedents, an uncorrected citation or news that disagrees. High only when the key analysts agree and every citation passed. Long term caps at medium.</p></div>
+      <div class="g"><span class="tag">fail closed</span><h3>Missing data says so</h3><p>A refused news call becomes "no data" and lowers confidence. Stale filings are dropped: the audit caught JPM revenue from 2014 being treated as current, and the tool now refuses it.</p></div>
+      <div class="g"><span class="tag">source_tier</span><h3>Every source ranked</h3><p>T1 for SEC filings, T2 for market data (labelled unofficial), unrated for anything else. A derived figure takes the weakest tier of its inputs.</p></div>
+      <div class="g"><span class="tag">ADVICE scan</span><h3>Research, not advice</h3><p>Every report and the draft card are scanned for buy, sell, price target, "good to buy" and "guaranteed". A match blocks the card until it is rewritten.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="band light" id="use" style="padding-top:0">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Use it</p>
+      <h2>Two ways in.</h2>
+      <p class="lede">Teammates use the desk by typing in Slack. Whoever hosts it sets it up once on the machine that runs the agents.</p>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Usage">
+      <button role="tab" id="tab-slack" aria-selected="true" aria-controls="panel-slack">In Slack</button>
+      <button role="tab" id="tab-setup" aria-selected="false" aria-controls="panel-setup">Set it up</button>
+    </div>
+
+    <div class="howto" id="panel-slack" role="tabpanel" aria-labelledby="tab-slack">
+      <div class="how"><span class="n">1</span><div><h4>Start a run</h4><p>Post a new message in the desk channel. Add a goal and a focus if you like.</p>
+        <div class="cmd"><pre>@desk-chief analyze NKE medium, focus on debt</pre><button class="copy" type="button">Copy</button></div>
+        <p class="note">Spell agent names exactly. A misspelled name gets no reply. Tickers with news names ready: NKE, AAPL, MSFT, TSLA, KO, PG, DIS, HD, WMT, COST.</p></div></div>
+      <div class="how"><span class="n">2</span><div><h4>Answer the goal question</h4><p>If you didn't name a goal, the chief asks. Reply in its thread, with the mention.</p>
+        <div class="cmd"><pre>@desk-chief 2</pre><button class="copy" type="button">Copy</button></div></div></div>
+      <div class="how"><span class="n">3</span><div><h4>Watch, or step in</h4><p>The debate stays in the thread; the card appears in the channel in about 7 to 10 minutes. These work at any time:</p>
+        <div class="cmds">
+          <div class="c">@desk-chief explain E159</div><div>What fact E159 is, its source and tier, whether it passed, and who cited it</div>
+          <div class="c">@desk-chief evidence</div><div>The full evidence table for the run, as a file</div>
+          <div class="c">@desk-chief ask technical: …</div><div>Forwards your question to one analyst and posts the answer</div>
+          <div class="c">@desk-chief verdict now</div><div>Skips to the verdict</div>
+          <div class="c">@desk-chief pause / resume</div><div>Holds the run, then continues</div>
+        </div>
+        <p class="note">Any other message you post during a run is treated as new evidence and routed to the right analyst.</p></div></div>
+      <div class="how"><span class="n">4</span><div><h4>Find past verdicts</h4><p>Every verdict is saved in the room. List them in the channel; the next run on the same ticker quotes the last one.</p>
+        <div class="cmd"><pre>!list-documents</pre><button class="copy" type="button">Copy</button></div></div></div>
+      <div class="how"><span class="n">5</span><div><h4>Hands-free (optional)</h4><p>Dictate commands into Slack with Wispr Flow or any dictation tool; add the four agent names to its dictionary. To hear replies, the host runs <code>scripts/narrator.py</code>, which reads each line starting with 🔊 aloud and never posts.</p></div></div>
+    </div>
+
+    <div class="howto" id="panel-setup" role="tabpanel" aria-labelledby="tab-setup" hidden>
+      <div class="how"><span class="n">1</span><div><h4>Get the code</h4><p>Python 3.11 or newer. Tests run offline and must pass.</p>
+        <div class="cmd"><pre>git clone https://github.com/karan-patel11/stock-desk.git && cd stock-desk
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt && pytest -q</pre><button class="copy" type="button">Copy</button></div></div></div>
+      <div class="how"><span class="n">2</span><div><h4>Add your SEC contact</h4><p>Copy <code>.env.example</code> to <code>.env</code> and set <code>SEC_USER_AGENT</code> to an app name and your real email. SEC requires it; the tools refuse the placeholder. Then check every data source once.</p>
+        <div class="cmd"><pre>cp .env.example .env
+scripts/smoke_live.sh NKE</pre><button class="copy" type="button">Copy</button></div></div></div>
+      <div class="how"><span class="n">3</span><div><h4>Run Switch and connect Slack</h4><p>In Switch Console, choose "Run a server on this computer", then connect Slack with Switch's Slack guide (Socket Mode). Note the connection's name.</p></div></div>
+      <div class="how"><span class="n">4</span><div><h4>Load the desk template</h4><p>Templates → Import template → choose <code>switch/desk-team.template.yaml</code> → Save → Use template. Fill in the ticker, the absolute path of this folder, the venv Python (<code>…/stock-desk/.venv/bin/python</code>) and your Slack connection, then Create all.</p></div></div>
+      <div class="how"><span class="n">5</span><div><h4>Check each agent's instructions</h4><p>Open each desk agent in Switch Console (Your Agents → the agent → Agent settings). If its instructions still show <code>{python}</code> or <code>{stockdesk_home}</code>, copy the filled-in text and paste it over the box, then Save. For desk-chief, from the repo folder:</p>
+        <div class="cmd"><pre>python3 -c 'import sys; t = open(f"agents/{sys.argv[1]}.md").read(); print(t.replace("$STOCKDESK_HOME", sys.argv[2]).replace("$STOCKDESK_PY", sys.argv[3]), end="")' chief "$(pwd)" "$(pwd)/.venv/bin/python" | pbcopy</pre><button class="copy" type="button">Copy</button></div>
+        <p class="note">Repeat with fundamental, technical and sentiment. On our Switch Console (0.40.1) the template left those placeholders unfilled.</p></div></div>
+      <div class="how"><span class="n">6</span><div><h4>Let teammates talk to the desk</h4><p>By default each agent answers only its owner ("Who can talk to your agent: Me and my agents"). For a team, change that setting on all four desk agents so the people in the room can reach them. Anyone who can address the agents can start tool runs on the host machine, so only do this in a channel you trust.</p></div></div>
+      <div class="how"><span class="n">7</span><div><h4>Reset and run</h4><p>In the Slack channel, send each reset as its own plain message, then start a run.</p>
+        <div class="cmd"><pre>!reset @desk-chief
+!reset @desk-fundamental
+!reset @desk-technical
+!reset @desk-sentiment</pre><button class="copy" type="button">Copy</button></div></div></div>
+      <div class="how"><span class="n">8</span><div><h4>Before a demo: warm the news cache</h4><p>GDELT allows one request every 5 seconds and blocks for hours after bursts. Set <code>STOCKDESK_CACHE_TTL_HOURS=24</code> in <code>.env</code>, then make this the first news call of the day.</p>
+        <div class="cmd"><pre>scripts/warm_demo.sh NKE</pre><button class="copy" type="button">Copy</button></div></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="limits">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Known limits</p>
+      <h2>What it does not do yet.</h2>
+      <p class="lede">Every limit is written down in <a href="https://github.com/karan-patel11/stock-desk/blob/main/docs/DECISIONS.md" target="_blank" rel="noopener">DECISIONS.md</a>, next to the audit that found it.</p>
+    </div>
+    <div class="limits">
+      <div><h4>Sentiment is unweighted</h4><p>One 90-day GDELT tone over every matching article. Tone weighted by source was designed and deferred: GDELT gives no per-article tone.</p></div>
+      <div><h4>Banks and insurers are unsupported</h4><p>Their revenue uses tags the filings tool does not read, so revenue comes back as no data.</p></div>
+      <div><h4>Prices come from an unofficial client</h4><p>yfinance can be rate limited or change without notice, and its latest bar can move during the evening.</p></div>
+      <div><h4>Run outside US market hours</h4><p>A bar from a session still trading can appear as the last close; there is no partial-bar check.</p></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div><a class="brand" href="#top">Stock Desk</a><p>WeMakeDevs Flip the Switch · Track 01, Best Business Workflow</p></div>
+    <p><a href="https://github.com/karan-patel11/stock-desk" target="_blank" rel="noopener">github.com/karan-patel11/stock-desk</a> · Research only, not financial advice.</p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var tabs = document.querySelectorAll('[role="tab"]');
+  tabs.forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      tabs.forEach(function (t) {
+        var on = t === tab;
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+        document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+      });
+    });
+  });
+  document.querySelectorAll('.copy').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var pre = btn.parentElement.querySelector('pre');
+      var text = pre.textContent;
+      var done = function (label) { btn.textContent = label; setTimeout(function () { btn.textContent = 'Copy'; }, 1600); };
+      var select = function () { var r = document.createRange(); r.selectNodeContents(pre); var s = getSelection(); s.removeAllRanges(); s.addRange(r); done('Selected'); };
+      try {
+        navigator.clipboard.writeText(text).then(function () { done('Copied'); }, select);
+      } catch (e) { select(); }
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
