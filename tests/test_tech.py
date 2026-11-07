@@ -200,3 +200,12 @@ def test_cli_prints_only_json(patched, capsys):
     assert code == 0 and len(out) == 1
     payload = json.loads(out[0])
     assert payload["ok"] is True and payload["run"] == run and payload["evidence"]
+
+
+
+@pytest.mark.parametrize("kind,word", [("golden", "above"), ("death", "below")])
+def test_cross_label_matches_its_direction(patched, monkeypatch, kind, word):
+    monkeypatch.setattr(tech, "latest_cross", lambda fast, slow: (kind, "2026-01-02"))
+    run, _, data = tech.main(["NKE", "--run", common.resolve_run(None)], today=TODAY)
+    fact = common.read_evidence(run, data["metrics"]["cross"]["id"])["fact"]
+    assert f"({kind} = SMA50 crossed {word} SMA200)" in fact

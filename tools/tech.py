@@ -169,7 +169,8 @@ def main(argv: Sequence[str], today: date | None = None) -> tuple[str | None, li
                    "no sign change of SMA50-SMA200 inside the available window", derived)
         else:
             kind, cross_date = cross
-            record("cross", f"Latest SMA50/SMA200 cross ({kind} = SMA50 crossed above SMA200)", kind, "event",
+            direction = "above" if kind == "golden" else "below"
+            record("cross", f"Latest SMA50/SMA200 cross ({kind} = SMA50 crossed {direction} SMA200)", kind, "event",
                    cross_date, "last sign change of SMA50-SMA200", derived)
     else:
         unavailable.append({"metric": "cross", "reason": "needs both SMA50 and SMA200"})
