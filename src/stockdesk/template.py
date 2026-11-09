@@ -199,8 +199,8 @@ def next_steps(out: Path, bridge: str, mention_test: bool) -> list[str]:
     steps += [
         f"2. In Switch Console, open the Templates page and use {out}.",
         "   The docs say Switch Console reads a template on the Templates page and builds one form from its params;",
-        "   NOT DOCUMENTED: the click path for loading a file of your own. If the page offers to paste a document,",
-        "   paste the file's contents.",
+        "   NOT DOCUMENTED: the click path for loading a file of your own. Seen on Switch Console 0.40.1 (this",
+        "   project's own use, not the docs): Templates -> Import template -> choose the file -> Save -> Use template.",
         f"   {SWITCH_TEMPLATES_DOC}",
         f"3. On the form, pick your {app} connection (by the Name you gave it) under Messaging app"
         + ("" if mention_test else " and enter the Ticker") + ", then Create.",
