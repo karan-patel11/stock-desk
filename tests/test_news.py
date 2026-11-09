@@ -6,9 +6,9 @@ from datetime import timedelta
 import pytest
 import requests
 
-import common
-import news
-from common import ToolError
+from stockdesk import common
+from stockdesk import news
+from stockdesk.common import ToolError
 
 RATE_TEXT = "Please limit requests to one every 5 seconds or contact kalev.leetaru5@gmail.com for assistance."
 

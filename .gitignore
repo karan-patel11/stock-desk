@@ -5,3 +5,9 @@ __pycache__/
 .pytest_cache/
 evidence/
 cache/
+*.egg-info/
+build/
+dist/
+# generated on each machine by `stockdesk template`; holds local paths
+/desk-team.template.yaml
+/mention-test.template.yaml

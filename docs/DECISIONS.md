@@ -1,6 +1,6 @@
 # Decisions
 
-Design decisions for Stock Desk, locked on 2026-11-06 and updated through 2026-11-07. Each section says what is
+Design decisions for Stock Desk, locked on 2026-11-06 and updated through 2026-11-08. Each section says what is
 built, what is deferred and what is not done.
 
 ## Rules for every change
@@ -10,8 +10,10 @@ built, what is deferred and what is not done.
 3. Research, not advice: outlooks are Bullish, Bearish or Neutral only. No buy/sell, no price targets, nothing
    "guaranteed". Every verdict ends with "Research only, not financial advice."
 4. Switch stays central: agents talk only through the Switch room.
-5. Reproducible: no hard-coded paths or secrets; configuration in `.env`.
-6. Dependencies: requests, pandas, yfinance, pytest (PyYAML optional). Nothing else without asking.
+5. Reproducible: no hard-coded paths or secrets in the repo; configuration in `~/.stockdesk/config.env`. Machine paths
+   are written only on the user's machine, by `stockdesk init` and `stockdesk template`.
+6. Dependencies: requests, pandas, yfinance at run time; pytest (dev) and PyYAML (optional); setuptools to build.
+   Nothing else without asking (no click, typer, platformdirs, rich).
 7. pytest passes with networking disabled.
 8. One feature per commit, never squashed.
 9. CLI contract: one JSON object on stdout; error codes no_data, source_unavailable, bad_input, rate_limited.
@@ -78,6 +80,35 @@ built, what is deferred and what is not done.
 - Speaks only messages posted after it started, each line once. It finds thread parents up to 120 minutes back.
 - SLACK_BOT_TOKEN and SLACK_CHANNEL_ID come from `.env`. Tests use hand-written fixtures in Slack's documented
   response shape, because no real responses were recorded.
+
+## Packaging (built 2026-11-08)
+
+- **Install channel: pipx from git.** `pipx install git+https://github.com/karan-patel11/stock-desk` gives one
+  isolated `stockdesk` command. **No PyPI for v1**: nothing is published anywhere. If PyPI is wanted later, first check
+  whether the name `stock-desk` is taken.
+- **One command, subcommands 1:1 with the tools.** Same arguments and the same JSON contract; `tools/<name>.py` stays
+  as a deprecated shim. Tool output was compared byte for byte before and after packaging (mocked offline run of
+  every tool). argparse only, stdlib; setuptools build backend.
+- **Data home `~/.stockdesk`.** Precedence: the `STOCKDESK_HOME` environment variable, then `STOCKDESK_HOME` in
+  `~/.stockdesk/config.env`, then `~/.stockdesk`. The old fall-back to the repo folder is removed: an installed package
+  has no repo, and nothing may be written inside the installed package (a test checks this). `.env` is no longer read.
+- **`config.env`, written by `stockdesk init` with mode 0600.** Plain `KEY=VALUE`, parsed with the stdlib;
+  environment variables win. `SEC_USER_AGENT` is never defaulted: missing means bad_input and no SEC request.
+- **Config JSON: override or bundled, never merged.** `<home>/config/<name>.json` replaces the bundled copy whole;
+  stderr says which one was used.
+- **Absolute executable path in the generated template, and why.** Switch Console may start Claude Code sessions
+  without the user's shell PATH, so a bare `stockdesk` can fail silently. `docs/TEMPLATES.md` (sandbox-quantum/switch,
+  re-read at commit c40eed5) has no agent field for environment variables or a command path (Claude's
+  `advanced_config` keys are tools, permissions, effort and the like), so `stockdesk template` writes
+  `STOCKDESK_HOME=<home> <absolute stockdesk path>` into every tool call in the instructions, resolved at generation
+  time. This also removes the `{python}` / `{stockdesk_home}` params that Switch Console 0.40.1 left as literal text.
+  Cost: the file is machine-specific, so it is generated, not checked in, and must be regenerated after a reinstall
+  or a move of the home.
+- **Switch Console is not detected.** The Switch docs document no command or file to detect it by, so `doctor`
+  reports a WARN with the install link instead of guessing.
+- **`--bridge slack|mattermost` changes only the form's wording.** A bridge param's value is the display name of a
+  connection on the server (`docs/TEMPLATES.md`), not a platform, so the param keeps no default and the deployer picks it.
+- **Windows is untested.**
 
 ## Known limitations
 

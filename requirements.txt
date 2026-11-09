@@ -1,3 +1,5 @@
+# Kept in sync with pyproject.toml (dependencies + the dev extra); tests/test_packaging.py checks it.
+# Prefer: pip install -e ".[dev]"   (or, for users: pipx install git+https://github.com/<owner>/stock-desk)
 requests>=2.31
 pandas>=2.0
 yfinance>=0.2.54

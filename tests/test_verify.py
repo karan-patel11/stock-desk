@@ -4,9 +4,9 @@ import json
 
 import pytest
 
-import common
-import verify
-from common import ToolError
+from stockdesk import common
+from stockdesk import verify
+from stockdesk.common import ToolError
 
 
 def put(run, fact, value, unit):

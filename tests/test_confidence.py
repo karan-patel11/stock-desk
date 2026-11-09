@@ -4,9 +4,9 @@ import json
 
 import pytest
 
-import common
-import confidence
-from common import ToolError
+from stockdesk import common
+from stockdesk import confidence
+from stockdesk.common import ToolError
 
 
 def put(run, fact, value, unit="ratio", tool="t.py", tier="T1"):

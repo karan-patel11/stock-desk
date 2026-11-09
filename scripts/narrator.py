@@ -4,7 +4,7 @@
   python3 scripts/narrator.py [--interval 4] [--lookback-min 120] [--once] [--dry-run]
 
 - Polls conversations.history for the channel and conversations.replies for its active threads, with
-  SLACK_BOT_TOKEN and SLACK_CHANNEL_ID from .env. The token needs channels:history (groups:history for a
+  SLACK_BOT_TOKEN and SLACK_CHANNEL_ID from ~/.stockdesk/config.env (or the environment). The token needs channels:history (groups:history for a
   private channel) and the app must be in the channel.
 - Speaks ONLY lines that start with "🔊 ", and each line once, in the order Slack posted them.
 - Speaks only messages posted after it started. --lookback-min is how far back it looks for thread parents,
@@ -29,8 +29,8 @@ from typing import Any, Callable, Sequence
 
 import requests
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
-import common  # noqa: E402  (reads .env; no other tool code is used)
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))  # a repo checkout without pip install
+from stockdesk import common  # noqa: E402  (reads config.env; no other tool code is used)
 
 API = "https://slack.com/api/"
 READ_METHODS = ("conversations.history", "conversations.replies")
@@ -178,7 +178,7 @@ def main(argv: Sequence[str] | None = None, *, get: Callable[..., Any] = request
             raise NarratorError("--interval must be at least 2 seconds and --lookback-min at least 0")
         token, channel = common.env("SLACK_BOT_TOKEN"), common.env("SLACK_CHANNEL_ID")
         if not token or not channel:
-            raise NarratorError("set SLACK_BOT_TOKEN and SLACK_CHANNEL_ID in .env (see .env.example)")
+            raise NarratorError("set SLACK_BOT_TOKEN and SLACK_CHANNEL_ID in ~/.stockdesk/config.env (see config.env.example)")
         if args.dry_run:
             def speak(line: str) -> None:
                 print(f"🔊 {line}", flush=True)

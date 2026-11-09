@@ -3,12 +3,12 @@
 # Usage: scripts/smoke_live.sh [TICKER] [event-dates-comma-separated]
 # News uses news.py --ticker (the name comes from config/news_names.json). It makes two GDELT requests; on demo day run
 # scripts/warm_demo.sh instead, as GDELT blocks for hours after refusals.
-# Needs: pip install -r requirements.txt, and SEC_USER_AGENT set in .env (your real contact email).
+# Needs: pip install -e . (or requirements.txt), and SEC_USER_AGENT set by `stockdesk init` (your real contact email).
 # Precedent is skipped unless you pass event dates you have verified from an opened source.
 set -u
 cd "$(dirname "$0")/.."
 if [ -n "${PYTHON:-}" ]; then PY="$PYTHON"; elif [ -x .venv/bin/python ]; then PY=.venv/bin/python; else PY=python3; fi
-EVHOME="${STOCKDESK_HOME:-$(pwd)}"
+EVHOME="$(PYTHONPATH=src "$PY" -c 'from stockdesk import common; print(common.home())')" || exit 1
 TICKER="${1:-NKE}"
 DATES="${2:-}"
 case "$DATES" in [0-9][0-9][0-9][0-9]-*) ;; *) DATES="${3:-}" ;; esac  # the old form passed a company name second

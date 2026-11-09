@@ -2,7 +2,7 @@
 # Warms the news cache for a demo with the exact call the sentiment agent makes (agents/sentiment.md, JOB 1 step 2).
 # Usage: scripts/warm_demo.sh TICKER      for example: scripts/warm_demo.sh NKE
 # news.py --ticker builds the query from config/news_names.json, so this and the agent produce the same request text
-# and the same cache entry. Set STOCKDESK_CACHE_TTL_HOURS=24 in .env first, or the warm cache lasts one hour.
+# and the same cache entry. Set STOCKDESK_CACHE_TTL_HOURS=24 in ~/.stockdesk/config.env first, or the warm cache lasts one hour.
 # tests/test_agents_and_template.py fails if the news.py call below and the one in agents/sentiment.md differ.
 set -u
 cd "$(dirname "$0")/.."
@@ -16,9 +16,9 @@ fi
 TICKER="$1"
 if [ -n "${PYTHON:-}" ]; then PY="$PYTHON"; elif [ -x .venv/bin/python ]; then PY=.venv/bin/python; else PY=python3; fi
 
-TTL="$("$PY" -c 'import sys; sys.path.insert(0, "tools"); import news; print(int(news.news_cache_ttl()))')" || exit 1
+TTL="$("$PY" -c 'import sys; sys.path.insert(0, "src"); from stockdesk import news; print(int(news.news_cache_ttl()))')" || exit 1
 echo "news cache TTL for the demo: ${TTL}s"
-if [ "$TTL" -le 3600 ]; then echo "warning: set STOCKDESK_CACHE_TTL_HOURS=24 in .env or this cache expires in an hour" >&2; fi
+if [ "$TTL" -le 3600 ]; then echo "warning: set STOCKDESK_CACHE_TTL_HOURS=24 in config.env or this cache expires in an hour" >&2; fi
 
 START="$("$PY" tools/round.py start "$TICKER")" || { echo "$START"; exit 1; }
 RUN="$(echo "$START" | "$PY" -c 'import json,sys; print(json.load(sys.stdin)["run"])')" || exit 1

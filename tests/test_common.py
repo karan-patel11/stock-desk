@@ -8,8 +8,8 @@ import stat
 import pytest
 import requests
 
-import common
-from common import ToolError
+from stockdesk import common
+from stockdesk.common import ToolError
 
 
 class FakeResponse:
@@ -106,9 +106,9 @@ def test_home_must_be_absolute(monkeypatch):
     assert err.value.code == "bad_input"
 
 
-def test_home_falls_back_to_repo_when_unset(monkeypatch):
+def test_home_defaults_to_dot_stockdesk_when_unset(monkeypatch, tmp_path):
     monkeypatch.delenv("STOCKDESK_HOME")
-    assert common.home() == common.repo_root()
+    assert common.home() == tmp_path / "user" / ".stockdesk"
 
 
 def test_sec_user_agent_rejects_placeholder(monkeypatch):
