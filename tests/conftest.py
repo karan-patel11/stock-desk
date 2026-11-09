@@ -31,6 +31,7 @@ def _isolated_home(tmp_path, monkeypatch):
         if source.is_file():
             (home / "config" / name).write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
     monkeypatch.setenv("STOCKDESK_HOME", str(home))
+    monkeypatch.setenv("HOME", str(tmp_path / "user"))   # Path.home(): never the real ~/.stockdesk
     monkeypatch.setenv("SEC_USER_AGENT", "StockDeskTest tester@stockdesk.test")
     for name in ("STOCKDESK_CACHE_TTL", "STOCKDESK_NEWS_CACHE_TTL", "STOCKDESK_MAX_FUND_AGE_DAYS",
                  "STOCKDESK_CACHE_TTL_HOURS"):   # a demo-day shell must not change results

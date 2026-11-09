@@ -115,8 +115,10 @@ def plain(value: Any) -> Any:
 # Config and paths
 # --------------------------------------------------------------------------
 
-def repo_root() -> Path:
-    return Path(__file__).resolve().parents[2]
+CONFIG_FILE = "config.env"
+HOME_ENV = "STOCKDESK_HOME"
+SEC_UA_ENV = "SEC_USER_AGENT"
+INIT_HINT = "run `stockdesk init`"
 
 
 def bundled(*parts: str):
@@ -127,18 +129,12 @@ def bundled(*parts: str):
     return node
 
 
-def home() -> Path:
-    """STOCKDESK_HOME if set (must be absolute), else the repo these tools live in."""
-    raw = os.environ.get("STOCKDESK_HOME", "").strip()
-    if not raw:
-        return repo_root()
-    path = Path(raw).expanduser()
-    if not path.is_absolute():
-        raise ToolError("bad_input", "STOCKDESK_HOME must be an absolute path")
-    return path
+def default_home() -> Path:
+    return Path.home() / ".stockdesk"
 
 
-def _read_dotenv(path: Path) -> dict[str, str]:
+def read_config_env(path: Path) -> dict[str, str]:
+    """KEY=VALUE lines (stdlib only). Blank lines and # comments are skipped; one pair of quotes is stripped."""
     values: dict[str, str] = {}
     if not path.is_file():
         return values
@@ -154,13 +150,52 @@ def _read_dotenv(path: Path) -> dict[str, str]:
     return values
 
 
+def _absolute_home(raw: str, where: str) -> Path:
+    path = Path(raw).expanduser()
+    if not path.is_absolute():
+        raise ToolError("bad_input", f"{HOME_ENV} must be an absolute path ({where}), got {raw!r}")
+    return path
+
+
+def home_source() -> tuple[Path, str]:
+    """The data home and where it came from, in order of precedence:
+    1. the STOCKDESK_HOME environment variable (absolute path),
+    2. STOCKDESK_HOME in ~/.stockdesk/config.env,
+    3. ~/.stockdesk.
+    """
+    raw = os.environ.get(HOME_ENV, "").strip()
+    if raw:
+        return _absolute_home(raw, "environment variable"), "environment variable STOCKDESK_HOME"
+    pointer = default_home() / CONFIG_FILE
+    raw = read_config_env(pointer).get(HOME_ENV, "").strip()
+    if raw:
+        return _absolute_home(raw, str(pointer)), f"STOCKDESK_HOME in {pointer}"
+    return default_home(), "default"
+
+
+def home() -> Path:
+    return home_source()[0]
+
+
+def config_files() -> list[Path]:
+    """Config files read by env(), first wins: <home>/config.env, then ~/.stockdesk/config.env if different."""
+    files = [home() / CONFIG_FILE]
+    pointer = default_home() / CONFIG_FILE
+    if pointer != files[0]:
+        files.append(pointer)
+    return files
+
+
 def env(name: str, default: str | None = None) -> str | None:
-    """Environment first, then <home>/.env. Empty strings count as unset."""
+    """Environment variable first, then the config files. Empty strings count as unset."""
     value = os.environ.get(name, "").strip()
     if value:
         return value
-    value = _read_dotenv(home() / ".env").get(name, "").strip()
-    return value or default
+    for path in config_files():
+        value = read_config_env(path).get(name, "").strip()
+        if value:
+            return value
+    return default
 
 
 def evidence_root() -> Path:
@@ -176,11 +211,16 @@ def config_path(name: str) -> Path:
 
 
 def load_config(name: str) -> dict[str, Any]:
+    """<home>/config/<name> if it exists (a user override, used whole), else the copy bundled in the package.
+    The two are never merged. Which one was used goes to stderr."""
     path = config_path(name)
-    if not path.is_file():
+    if path.is_file():
+        log(f"config {name}: using override {path}")
+    else:
         path = bundled("config", name)
         if not path.is_file():
             raise ToolError("no_data", f"missing config file config/{name}")
+        log(f"config {name}: using bundled default")
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
@@ -192,15 +232,21 @@ def user_agent(required: bool = False) -> str:
     so a personal email is never sent to a service that did not ask for it."""
     if not required:
         return GENERIC_UA
-    ua = env("SEC_USER_AGENT") or ""
-    lowered = ua.lower()
-    if "@" not in ua or "your-email" in lowered or "example.com" in lowered:
-        raise ToolError(
-            "bad_input",
-            "set SEC_USER_AGENT in .env to '<app name> <your real contact email>' "
-            "(SEC fair-access policy)",
-        )
+    ua = env(SEC_UA_ENV) or ""
+    if not ua:
+        raise ToolError("bad_input", f"SEC_USER_AGENT is not set; {INIT_HINT} (SEC fair-access policy needs a contact email)")
+    if not sec_user_agent_ok(ua):
+        raise ToolError("bad_input", f"SEC_USER_AGENT has no real contact email; {INIT_HINT} (SEC fair-access policy)")
     return ua
+
+
+EMAIL_RE = re.compile(r"[^@\s]+@[^@\s]+\.[A-Za-z]{2,}")
+
+
+def sec_user_agent_ok(ua: str) -> bool:
+    """A contact email is present and it is not the documented placeholder. Never filled in by default."""
+    lowered = ua.lower()
+    return bool(EMAIL_RE.search(ua)) and "your-email" not in lowered and "example.com" not in lowered
 
 
 # --------------------------------------------------------------------------
