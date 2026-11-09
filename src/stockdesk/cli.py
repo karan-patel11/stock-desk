@@ -28,7 +28,7 @@ DATA_TOOLS = {
     "evidence-table": "evidence_table",
 }
 # subcommand -> module with main(argv) -> exit code. Human-readable output, not the data-tool contract.
-SETUP_COMMANDS: dict[str, str] = {}
+SETUP_COMMANDS = {"init": "init"}
 
 
 def _parser() -> argparse.ArgumentParser:
