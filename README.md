@@ -7,8 +7,15 @@ it. Four AI agents split the work, argue it out in a thread, and every figure is
 in code before a verdict reaches the team. Built on [Switch](https://github.com/sandbox-quantum/switch) for the
 WeMakeDevs "Flip the Switch" hackathon, **Track 01: Best Business Workflow**.
 
-**[Live site](https://karan-patel11.github.io/stock-desk/)** · **[A complete real run](docs/desk-run-nke-2.md)** ·
-**[Decisions and known limits](docs/DECISIONS.md)**
+> ### ▶ Watch a complete run in Slack
+>
+> **[See Stock Desk run end to end in Slack (video)](https://www.loom.com/share/a064d6c7b1764cb2a510fd8570291bf1)**
+>
+> One `@desk-chief analyze` message, the agents' debate in the thread, the citation checks, and the verdict card,
+> recorded live. This is the fastest way to see how it looks and behaves.
+
+**[Live site](https://karan-patel11.github.io/stock-desk/)** · **[Watch a full Slack run](https://www.loom.com/share/a064d6c7b1764cb2a510fd8570291bf1)** ·
+**[Written record of a real run](docs/desk-run-nke-2.md)** · **[Decisions and known limits](docs/DECISIONS.md)**
 
 > Research only, not financial advice. Outlooks are Bullish, Bearish or Neutral. The desk never says buy or sell and
 > never gives price targets.
@@ -67,6 +74,8 @@ run is treated as new evidence.
 | Evidence entries | 369, each with source, tier, link and retrieval time |
 | Time | About 7 minutes |
 
+**▶ [Watch this kind of run in Slack, start to finish (video)](https://www.loom.com/share/a064d6c7b1764cb2a510fd8570291bf1)**
+
 The full thread, the checks and what went wrong are in [`docs/desk-run-nke-2.md`](docs/desk-run-nke-2.md).
 
 ## Why it runs on Switch
@@ -99,20 +108,92 @@ Agents reason and talk. Python does every calculation and writes the evidence th
 `confidence.py` and `round.py` (the two-round cap) enforce the rules in code, not in prompts. 281 offline tests cover
 them.
 
-## Try it
+## Set it up and use it
 
-You need Python 3.11+, Switch Console, and a Slack workspace connected to Switch.
+Want to see it first? [Watch a full Slack run](https://www.loom.com/share/a064d6c7b1764cb2a510fd8570291bf1).
+To run it yourself, plan for about 10 minutes plus the Slack connection.
+
+**You need**
+
+- Python 3.11 or newer
+- [Switch Console](https://github.com/sandbox-quantum/switch) (it runs on macOS; Windows and Linux builds are early access)
+- A Slack workspace you can add an app to. No Slack? Switch's built-in Mattermost (needs Docker) is the documented fallback.
+- Claude Code installed and signed in, because the four agents run as Claude Code sessions
+- A real contact email for SEC's required User-Agent (SEC rejects placeholders, and so do the tools)
+
+**1. Get the code and check it works**
 
 ```bash
 git clone https://github.com/karan-patel11/stock-desk.git && cd stock-desk
 python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt && pytest -q         # 281 tests, offline
-cp .env.example .env                                  # set SEC_USER_AGENT to your name and real email
-scripts/smoke_live.sh NKE                             # one live call to each data source
+pip install -r requirements.txt && pytest -q          # 281 tests, offline
+cp .env.example .env
 ```
 
-Then load `switch/desk-team.template.yaml` in Switch Console and type `@desk-chief analyze NKE` in the channel. The
-full steps, including two things to check in Switch Console, are under [Switch and Slack setup](#switch-and-slack-setup).
+Open `.env` and set `SEC_USER_AGENT` to `StockDesk Your Name your-real-email@example.com`. Leave `STOCKDESK_HOME`
+empty to use this folder. Then run one live call to every data source and read the output:
+
+```bash
+scripts/smoke_live.sh NKE
+```
+
+**2. Start Switch and connect Slack.** Run a Switch server from Switch Console (**Run a server on this computer**),
+then connect your Slack workspace with Switch's Slack guide. Note the connection's **Name**; you will need it next.
+Step-by-step with doc references: [Switch and Slack setup](#switch-and-slack-setup) and `docs/stage0.md`.
+
+**3. Load the desk.** Build and load the template:
+
+```bash
+python3 scripts/build_template.py
+```
+
+In Switch Console, load `switch/desk-team.template.yaml` and fill in the params: `ticker` (for example NKE),
+`stockdesk_home` (the absolute path of this folder), `python` (the absolute path of `.venv/bin/python`) and `bridge`
+(your Slack connection's name). This creates the four agents and the room.
+
+**4. Check each agent's instructions.** On Switch Console 0.40.1 the `{python}` and `{stockdesk_home}` placeholders
+can stay as literal text. Open each desk agent (**Your Agents → the agent → Agent settings**). If its instructions
+still contain them, paste the filled-in text and save. The exact command is in
+[Switch and Slack setup](#switch-and-slack-setup), step 5. If the agents run commands with a literal `{python}` in them, this is why.
+
+**5. Reset the agents, then run it.** In your Slack channel, send each of these as its own plain message:
+`!reset @desk-chief`, `!reset @desk-fundamental`, `!reset @desk-technical`, `!reset @desk-sentiment`. Each replies that
+it reset. Then:
+
+```
+@desk-chief analyze NKE
+```
+
+**Using it**
+
+1. The chief asks for your goal. Reply with `@desk-chief 1` (1–4 weeks), `2` (3–6 months), `3` (1–3 years), or `all`.
+   To skip the question, name the goal up front: `@desk-chief analyze NKE medium, focus on debt`.
+2. Watch the run's thread: three analyst reports, the chief's citation checks and cross-examination, then the verdict
+   card in the channel. A full run takes about 7 minutes.
+3. Question anything while it runs:
+
+| Say this | To do this |
+|---|---|
+| `@desk-chief explain E159` | See where one number came from, its source and tier, and whether it passed |
+| `@desk-chief evidence` | Post the full evidence table for the run |
+| `@desk-chief ask technical: <question>` | Put a question to one analyst |
+| `@desk-chief pause` / `resume` | Hold or continue the run |
+| `@desk-chief verdict now` | Skip to the verdict |
+
+4. Find the saved verdict and evidence table in the room's documents. The next run on the same ticker reads it first.
+
+**If something goes wrong**
+
+- **Silence after you mention an agent:** agents wake only on their exact name, and Slack does not autocomplete them on
+  free plans. Type the full name, and check for typos.
+- **Agents answer only you:** by default each agent answers only its owner. To let teammates use the desk, change
+  "Who can talk to your agent" on all four agents (step 7 in [Switch and Slack setup](#switch-and-slack-setup)). Do this
+  only in a channel you trust, because anyone who can address the agents can start tool runs on the host machine.
+- **Sentiment says "no data":** the news source (GDELT) rate limits hard. Warm its cache before a demo with
+  `scripts/warm_demo.sh NKE` (see [Demo day](#demo-day)). The desk will report the gap and lower confidence instead of
+  guessing.
+- **A ticker is rejected:** `config/news_names.json` needs a common brand name for it, and `--etf` is needed for tickers
+  missing from `config/sector_etf.json`. Banks and insurers are not supported yet (see `docs/DECISIONS.md`).
 
 ---
 
