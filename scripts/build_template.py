@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build switch/desk-team.template.yaml from switch/desk-team.skeleton and agents/*.md.
+"""Build switch/desk-team.template.yaml from the package's data/templates/desk-team.skeleton and data/agents/*.md.
 
   python3 scripts/build_template.py            write the template
   python3 scripts/build_template.py --check    exit 1 if the checked-in template is out of date
@@ -19,9 +19,10 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SKELETON = ROOT / "switch" / "desk-team.skeleton"
+DATA = ROOT / "src" / "stockdesk" / "data"
+SKELETON = DATA / "templates" / "desk-team.skeleton"
 OUTPUT = ROOT / "switch" / "desk-team.template.yaml"
-AGENTS = ROOT / "agents"
+AGENTS = DATA / "agents"
 MARKER = re.compile(r"^(?P<indent>[ ]*)@@INSTRUCTIONS:(?P<name>[a-z]+)@@[ ]*$")
 SUBSTITUTIONS = (("$STOCKDESK_HOME", "{stockdesk_home}"), ("$STOCKDESK_PY", "{python}"))
 MAX_LINES = {"chief": 80, "fundamental": 60, "technical": 60, "sentiment": 60}

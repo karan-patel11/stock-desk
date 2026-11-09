@@ -29,8 +29,8 @@ from typing import Any, Callable, Sequence
 
 import requests
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
-import common  # noqa: E402  (reads .env; no other tool code is used)
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))  # a repo checkout without pip install
+from stockdesk import common  # noqa: E402  (reads .env; no other tool code is used)
 
 API = "https://slack.com/api/"
 READ_METHODS = ("conversations.history", "conversations.replies")

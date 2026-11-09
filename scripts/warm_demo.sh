@@ -16,7 +16,7 @@ fi
 TICKER="$1"
 if [ -n "${PYTHON:-}" ]; then PY="$PYTHON"; elif [ -x .venv/bin/python ]; then PY=.venv/bin/python; else PY=python3; fi
 
-TTL="$("$PY" -c 'import sys; sys.path.insert(0, "tools"); import news; print(int(news.news_cache_ttl()))')" || exit 1
+TTL="$("$PY" -c 'import sys; sys.path.insert(0, "src"); from stockdesk import news; print(int(news.news_cache_ttl()))')" || exit 1
 echo "news cache TTL for the demo: ${TTL}s"
 if [ "$TTL" -le 3600 ]; then echo "warning: set STOCKDESK_CACHE_TTL_HOURS=24 in .env or this cache expires in an hour" >&2; fi
 

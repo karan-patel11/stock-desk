@@ -4,9 +4,9 @@ import json
 
 import pytest
 
-import common
-import round as rnd
-from common import ToolError
+from stockdesk import common
+from stockdesk import round as rnd
+from stockdesk.common import ToolError
 
 
 def call(*argv):

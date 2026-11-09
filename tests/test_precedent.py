@@ -6,9 +6,9 @@ from datetime import date
 import pandas as pd
 import pytest
 
-import common
-import precedent
-from common import ToolError
+from stockdesk import common
+from stockdesk import precedent
+from stockdesk.common import ToolError
 
 TODAY = date(2026, 11, 4)
 SESSIONS = [d.strftime("%Y-%m-%d") for d in pd.bdate_range("2026-01-01", periods=60)]

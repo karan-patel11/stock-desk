@@ -7,9 +7,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import common
-import tech
-from common import ToolError
+from stockdesk import common
+from stockdesk import tech
+from stockdesk.common import ToolError
 
 
 def series(values, start="2026-01-01"):

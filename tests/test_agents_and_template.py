@@ -9,7 +9,8 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-AGENT_FILES = sorted((ROOT / "agents").glob("*.md"))
+DATA = ROOT / "src" / "stockdesk" / "data"
+AGENT_FILES = sorted((DATA / "agents").glob("*.md"))
 TOOLS = {p.stem for p in (ROOT / "tools").glob("*.py")}
 
 
@@ -37,17 +38,17 @@ def test_each_agent_states_the_no_advice_and_citation_rules():
 
 
 def test_only_the_chief_writes_the_verdict_and_it_ends_with_the_disclaimer():
-    chief = (ROOT / "agents" / "chief.md").read_text(encoding="utf-8")
+    chief = (DATA / "agents" / "chief.md").read_text(encoding="utf-8")
     assert "Research only, not financial advice." in chief
     assert "round.py status" in chief and "round.py next" in chief and "round.py end" in chief
     assert "verify.py --text-file" in chief and "create_room_document" in chief
     for name in ("fundamental", "technical", "sentiment"):
-        assert "create_room_document" not in (ROOT / "agents" / f"{name}.md").read_text(encoding="utf-8")
+        assert "create_room_document" not in (DATA / "agents" / f"{name}.md").read_text(encoding="utf-8")
 
 
 def test_analysts_answer_only_the_chief():
     for name in ("fundamental", "technical", "sentiment"):
-        text = (ROOT / "agents" / f"{name}.md").read_text(encoding="utf-8")
+        text = (DATA / "agents" / f"{name}.md").read_text(encoding="utf-8")
         assert text.count("@desk-chief") >= 2
         assert not re.search(r"@desk-(fundamental|technical|sentiment)", text)
 
@@ -59,8 +60,8 @@ def test_generated_template_is_up_to_date():
 
 
 def test_template_has_no_hardcoded_paths_or_emails():
-    for name in ("desk-team.template.yaml", "mention-test.template.yaml"):
-        text = (ROOT / "switch" / name).read_text(encoding="utf-8")
+    for path in (ROOT / "switch" / "desk-team.template.yaml", DATA / "templates" / "mention-test.template.yaml"):
+        text = path.read_text(encoding="utf-8")
         assert "/home/" not in text and "/Users/" not in text
         assert not re.search(r"[\w.]+@[\w.]+\.\w+", text)
         placeholders = set(re.findall(r"\{[^}]*\}", text))
@@ -96,7 +97,7 @@ def _one_news_call(text: str, pattern: re.Pattern, where: str) -> tuple[str, str
 
 def test_warm_demo_uses_the_sentiment_agents_exact_news_query():
     """The demo cache is keyed on the exact query text, so the warm-up must match the agent verbatim."""
-    agent = _one_news_call((ROOT / "agents" / "sentiment.md").read_text(encoding="utf-8"), NEWS_CALL_AGENT,
+    agent = _one_news_call((DATA / "agents" / "sentiment.md").read_text(encoding="utf-8"), NEWS_CALL_AGENT,
                            "agents/sentiment.md")
     template = _one_news_call((ROOT / "switch" / "desk-team.template.yaml").read_text(encoding="utf-8"),
                               NEWS_CALL_AGENT, "switch/desk-team.template.yaml")
@@ -115,7 +116,7 @@ ANALYSTS = ("fundamental", "technical", "sentiment")
 
 
 def agent(name):
-    return (ROOT / "agents" / f"{name}.md").read_text(encoding="utf-8")
+    return (DATA / "agents" / f"{name}.md").read_text(encoding="utf-8")
 
 
 def test_analysts_echo_scope_and_use_the_exact_stance_line():

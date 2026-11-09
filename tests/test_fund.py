@@ -7,9 +7,9 @@ import json
 import pytest
 import requests
 
-import common
-import fund
-from common import ToolError
+from stockdesk import common
+from stockdesk import fund
+from stockdesk.common import ToolError
 
 CIK10 = "0001234567"
 URLS = {

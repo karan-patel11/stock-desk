@@ -1,5 +1,5 @@
 # DO NOT EDIT switch/desk-team.template.yaml: scripts/build_template.py generates it from
-# switch/desk-team.skeleton (this text) and agents/*.md. Edit those, then rebuild.
+# src/stockdesk/data/templates/desk-team.skeleton (this text) and src/stockdesk/data/agents/*.md. Edit those, then rebuild.
 #
 # Checked against docs/TEMPLATES.md in sandbox-quantum/switch at commit 9619bc9:
 #   - params is a mapping keyed by name ("params: <name>: type/description/label/default/...")

@@ -8,8 +8,8 @@ import stat
 import pytest
 import requests
 
-import common
-from common import ToolError
+from stockdesk import common
+from stockdesk.common import ToolError
 
 
 class FakeResponse:

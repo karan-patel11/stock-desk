@@ -19,6 +19,7 @@ import traceback
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from hashlib import sha256
+from importlib import resources
 from pathlib import Path
 from typing import Any, Callable, Iterable, Sequence
 from urllib.parse import urlencode, urlparse
@@ -115,7 +116,15 @@ def plain(value: Any) -> Any:
 # --------------------------------------------------------------------------
 
 def repo_root() -> Path:
-    return Path(__file__).resolve().parent.parent
+    return Path(__file__).resolve().parents[2]
+
+
+def bundled(*parts: str):
+    """A file shipped inside the package under stockdesk/data/ (importlib.resources, never a cwd path)."""
+    node = resources.files(__package__).joinpath("data")
+    for part in parts:
+        node = node.joinpath(part)
+    return node
 
 
 def home() -> Path:
@@ -169,7 +178,9 @@ def config_path(name: str) -> Path:
 def load_config(name: str) -> dict[str, Any]:
     path = config_path(name)
     if not path.is_file():
-        raise ToolError("no_data", f"missing config file config/{name}")
+        path = bundled("config", name)
+        if not path.is_file():
+            raise ToolError("no_data", f"missing config file config/{name}")
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:

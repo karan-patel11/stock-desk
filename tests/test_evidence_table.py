@@ -4,9 +4,9 @@ import json
 
 import pytest
 
-import common
-import evidence_table
-from common import ToolError
+from stockdesk import common
+from stockdesk import evidence_table
+from stockdesk.common import ToolError
 
 
 @pytest.fixture

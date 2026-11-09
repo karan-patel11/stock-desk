@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stock-desk"
+dynamic = ["version"]
+description = "Evidence-first equity research tools for a Switch agent desk. Research only, not financial advice."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "requests>=2.31",
+    "pandas>=2.0",
+    "yfinance>=0.2.54",
+]
+
+[project.optional-dependencies]
+yaml = ["PyYAML>=6.0"]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+stockdesk = "stockdesk.cli:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "stockdesk.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+stockdesk = ["data/*/*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
