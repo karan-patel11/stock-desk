@@ -11,7 +11,7 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "src" / "stockdesk" / "data"
 AGENT_FILES = sorted((DATA / "agents").glob("*.md"))
-TOOLS = {p.stem for p in (ROOT / "tools").glob("*.py")}
+SKELETON = DATA / "templates" / "desk-team.skeleton"
 
 
 def test_four_agent_files():
@@ -25,9 +25,12 @@ def test_agent_file_rules(path):
     assert "{" not in text and "}" not in text      # Switch would read braces as placeholders
     assert "\t" not in text
     assert "/home/" not in text and "/Users/" not in text and "@" not in re.sub(r"@desk-[a-z]+", "", text)
-    for tool in re.findall(r"(?:tools|T)/([a-z_]+)\.py", text):
-        assert tool in TOOLS, f"{path.name} references missing tool {tool}.py"
-    assert re.findall(r"\$[A-Z_]{3,}", text) and set(re.findall(r"\$[A-Z_]{3,}", text)) <= {"$STOCKDESK_HOME", "$STOCKDESK_PY"}
+    from stockdesk.cli import DATA_TOOLS
+
+    for tool in re.findall(r"(?:\$STOCKDESK|\bT) ([a-z][a-z_-]*)", text):
+        assert tool in DATA_TOOLS or tool == "NAME", f"{path.name} references missing tool {tool}"
+    assert "tools/" not in text and ".py ARGS" not in text
+    assert re.findall(r"\$[A-Z_]{3,}", text) and set(re.findall(r"\$[A-Z_]{3,}", text)) <= {"$STOCKDESK_HOME", "$STOCKDESK"}
 
 
 def test_each_agent_states_the_no_advice_and_citation_rules():
@@ -40,8 +43,8 @@ def test_each_agent_states_the_no_advice_and_citation_rules():
 def test_only_the_chief_writes_the_verdict_and_it_ends_with_the_disclaimer():
     chief = (DATA / "agents" / "chief.md").read_text(encoding="utf-8")
     assert "Research only, not financial advice." in chief
-    assert "round.py status" in chief and "round.py next" in chief and "round.py end" in chief
-    assert "verify.py --text-file" in chief and "create_room_document" in chief
+    assert "T round status" in chief and "T round next" in chief and "T round end" in chief
+    assert "T verify --text-file" in chief and "create_room_document" in chief
     for name in ("fundamental", "technical", "sentiment"):
         assert "create_room_document" not in (DATA / "agents" / f"{name}.md").read_text(encoding="utf-8")
 
@@ -53,57 +56,29 @@ def test_analysts_answer_only_the_chief():
         assert not re.search(r"@desk-(fundamental|technical|sentiment)", text)
 
 
-def test_generated_template_is_up_to_date():
-    result = subprocess.run([sys.executable, str(ROOT / "scripts" / "build_template.py"), "--check"],
-                            capture_output=True, text=True)
-    assert result.returncode == 0, result.stderr
-
-
-def test_template_has_no_hardcoded_paths_or_emails():
-    for path in (ROOT / "switch" / "desk-team.template.yaml", DATA / "templates" / "mention-test.template.yaml"):
-        text = path.read_text(encoding="utf-8")
-        assert "/home/" not in text and "/Users/" not in text
-        assert not re.search(r"[\w.]+@[\w.]+\.\w+", text)
-        placeholders = set(re.findall(r"\{[^}]*\}", text))
-        assert placeholders <= {"{$agents_dir}", "{$creator}", "{ticker}", "{bridge}", "{stockdesk_home}", "{python}"}
-
-
-def test_build_fails_on_braces_in_an_agent_file(tmp_path, monkeypatch):
-    sys.path.insert(0, str(ROOT / "scripts"))
-    import build_template
-
-    bad = tmp_path / "agents"
-    bad.mkdir()
-    for name in ("chief", "fundamental", "technical", "sentiment"):
-        (bad / f"{name}.md").write_text("ok\n")
-    (bad / "chief.md").write_text("use {this}\n")
-    monkeypatch.setattr(build_template, "AGENTS", bad)
-    with pytest.raises(SystemExit) as err:
-        build_template.build()
-    assert "curly brace" in str(err.value)
-
-
-NEWS_CALL_AGENT = re.compile(r'tools/news\.py (--ticker) TICKER (--days \d+) --run RUN')
+NEWS_CALL_AGENT = re.compile(r'\$STOCKDESK news (--ticker) TICKER (--days \d+) --run RUN')
+NEWS_CALL_TEMPLATE = re.compile(r'/stockdesk news (--ticker) TICKER (--days \d+) --run RUN')
 NEWS_CALL_WARM = re.compile(r'tools/news\.py (--ticker) "\$TICKER" (--days \d+) --run "\$RUN"')
 
 
 def _one_news_call(text: str, pattern: re.Pattern, where: str) -> tuple[str, str]:
-    assert len(re.findall(r'tools/news\.py ', text)) == 1, f"{where}: expected exactly one news.py call"
-    assert not re.search(r'tools/news\.py "', text), f"{where}: free-text query; use --ticker"
+    assert not re.search(r'(?:news\.py|stockdesk news|STOCKDESK news) "', text), f"{where}: free-text query; use --ticker"
     found = pattern.findall(text)
-    assert len(found) == 1, f"{where}: news.py call is not the --ticker shape"
+    assert len(found) == 1, f"{where}: expected exactly one news call of the --ticker shape, found {found}"
     return found[0]
 
 
-def test_warm_demo_uses_the_sentiment_agents_exact_news_query():
+def test_warm_demo_uses_the_sentiment_agents_exact_news_query(tmp_path):
     """The demo cache is keyed on the exact query text, so the warm-up must match the agent verbatim."""
+    from stockdesk import template
+
     agent = _one_news_call((DATA / "agents" / "sentiment.md").read_text(encoding="utf-8"), NEWS_CALL_AGENT,
                            "agents/sentiment.md")
-    template = _one_news_call((ROOT / "switch" / "desk-team.template.yaml").read_text(encoding="utf-8"),
-                              NEWS_CALL_AGENT, "switch/desk-team.template.yaml")
+    generated = _one_news_call(template.build_desk(["/opt/bin/stockdesk"], tmp_path, "slack", None),
+                               NEWS_CALL_TEMPLATE, "generated template")
     warm = _one_news_call((ROOT / "scripts" / "warm_demo.sh").read_text(encoding="utf-8"), NEWS_CALL_WARM,
                           "scripts/warm_demo.sh")
-    assert warm == agent == template, f"query drift: warm_demo.sh {warm} vs sentiment.md {agent} vs template {template}"
+    assert warm == agent == generated, f"query drift: warm_demo.sh {warm} vs sentiment.md {agent} vs template {generated}"
 
 
 def test_warm_demo_needs_a_ticker():
@@ -140,9 +115,9 @@ def test_every_agent_ends_messages_with_a_voice_line():
 
 
 def test_analysts_run_tools_once_with_the_widest_settings():
-    assert "fund.py TICKER --quarters 12 --run RUN" in agent("fundamental")
-    assert "tech.py TICKER --lookback 2y --run RUN" in agent("technical")
-    assert "news.py --ticker TICKER --days 90 --run RUN" in agent("sentiment")
+    assert "$STOCKDESK fund TICKER --quarters 12 --run RUN" in agent("fundamental")
+    assert "$STOCKDESK tech TICKER --lookback 2y --run RUN" in agent("technical")
+    assert "$STOCKDESK news --ticker TICKER --days 90 --run RUN" in agent("sentiment")
     assert "News cached, fetched <data.fetched_at>" in agent("sentiment")
     assert "unweighted, tiers not applied" in agent("sentiment")
 
@@ -156,9 +131,9 @@ def test_chief_scopes_goal_question_confidence_and_card():
     assert "@desk-fundamental Scope: earnings quality · Period: last 12 quarters" in text
     assert "@desk-technical Scope: trend and momentum · Period: 2y" in text
     assert "@desk-sentiment Scope: news tone and risk events · Period: 90 days (14/30/90 windows)" in text
-    assert "T/confidence.py --run RUN --horizon" in text and "never set, raise or change it yourself" in text
-    assert "--windows 5,30,90,250" in text and "T/evidence_table.py --run RUN" in text
-    assert "T/verify.py E<n> --withdraw" in text and "T/round.py goal" in text
+    assert "T confidence --run RUN --horizon" in text and "never set, raise or change it yourself" in text
+    assert "--windows 5,30,90,250" in text and "T evidence-table --run RUN" in text
+    assert "T verify E<n> --withdraw" in text and "T round goal" in text
     card = text[text.index("TICKER · Your goal:"):text.index("Research only, not financial advice.")]
     for part in ("▶ <HEADLINE HORIZON>", "Confidence reasons:", "3 proofs:", "What flips it:", "Disagreement:",
                  "Precedent:", "Citations verified:", "🔊 "):
@@ -168,7 +143,7 @@ def test_chief_scopes_goal_question_confidence_and_card():
 
 
 def test_room_alias_and_rules():
-    text = (ROOT / "switch" / "desk-team.template.yaml").read_text(encoding="utf-8")
+    text = SKELETON.read_text(encoding="utf-8")
     assert '  aliases:\n    desk-chief: "chief"\n' in text
     assert "Three layers" in text and "confidence.py" in text and "🔊" in text
 

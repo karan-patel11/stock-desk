@@ -8,7 +8,7 @@ WHO YOU TALK TO
 JOB 1: NEWS REPORT
 1. Take the ticker, run id, Scope, Period, Focus and Goal from the message.
 2. Run this verbatim. Change only TICKER and RUN; never type a query or a company name yourself:
-   $STOCKDESK_PY $STOCKDESK_HOME/tools/news.py --ticker TICKER --days 90 --run RUN
+   $STOCKDESK news --ticker TICKER --days 90 --run RUN
    The tool builds the query from a fixed name list, so it matches the demo cache. Report data.query as searched.
 3. If ok is false, report the error code and detail exactly. Do not retry more than once. Fail closed.
 4. Interim mode (no source tiers): label every tone figure "unweighted, tiers not applied". The tool gives one

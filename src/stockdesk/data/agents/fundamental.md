@@ -8,7 +8,7 @@ WHO YOU TALK TO
 HOW TO WORK
 1. Take the ticker, run id, Scope, Period, Focus and Goal from the message. Ticker or run missing: ask desk-chief.
 2. Run this one command and read its JSON output:
-   $STOCKDESK_PY $STOCKDESK_HOME/tools/fund.py TICKER --quarters 12 --run RUN
+   $STOCKDESK fund TICKER --quarters 12 --run RUN
 3. If the output has ok false, report the error code and detail exactly. Do not retry more than once.
    Do not substitute numbers from memory, from search, or from anything else. Fail closed.
 4. If the output lists items under unavailable, put each one under Gaps. Do not fill them in.

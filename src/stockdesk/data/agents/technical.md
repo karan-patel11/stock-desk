@@ -8,7 +8,7 @@ WHO YOU TALK TO
 HOW TO WORK
 1. Take the ticker, run id, Scope, Period, Focus and Goal from the message. Ticker or run missing: ask desk-chief.
 2. Run this one command and read its JSON output:
-   $STOCKDESK_PY $STOCKDESK_HOME/tools/tech.py TICKER --lookback 2y --run RUN
+   $STOCKDESK tech TICKER --lookback 2y --run RUN
 3. If the output has ok false, report the error code and detail exactly. Do not retry more than once.
    A stale-data error means the price feed is behind: report it as a gap, do not work around it. Fail closed.
 4. If the output lists items under unavailable, put each one under Gaps. Do not fill them in.

@@ -5,7 +5,8 @@ on them. Every step below cites the Switch doc it comes from, as a path in
 [sandbox-quantum/switch](https://github.com/sandbox-quantum/switch) (read at commit `9619bc9`). Where the docs do not
 settle something, the step says **unverified**.
 
-Template: `switch/mention-test.template.yaml`. It creates `s0-chief` and `s0-technical` (Claude Code, this
+Template: run `stockdesk template --mention-test` (writes `mention-test.template.yaml`; the source is
+`src/stockdesk/data/templates/mention-test.template.yaml`). It creates `s0-chief` and `s0-technical` (Claude Code, this
 computer) and a room `desk-mention-test` on the messaging app you pick on the form. They stand in for desk-chief and
 desk-technical: the mention mechanics are the same, and separate names keep Stage 0 from blocking the desk template
 (see [After Stage 0](#after-stage-0)).
@@ -126,7 +127,8 @@ There is no separate connect step for a local agent: Switch Console starts sessi
 creates everything in one pass." and "One click creates the agent, then the room with the agent and the deployer in
 it, then posts the kickoff."
 
-1. Open **Templates** in Switch Console and use the contents of `switch/mention-test.template.yaml`.
+1. Run `stockdesk template --mention-test`, then open **Templates** in Switch Console and use the contents of the
+   `mention-test.template.yaml` it wrote.
    **Unverified:** the click path for a document of your own. The docs name the Templates page, and a Use page that a
    document can be pasted into (`docs/TEMPLATES.md`, Version 2: "the same with its instructions inline, to paste
    into the Use page"), but give no click-by-click steps.
