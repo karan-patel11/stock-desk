@@ -371,7 +371,7 @@ footer p { color: var(--mist-soft); font-size: 14px; }
       <div class="node" role="listitem"><span class="t">Slack channel</span><span class="s">You type <code>@desk-chief analyze NKE</code>. Teammates watch and can interrupt.</span></div>
       <div class="node key" role="listitem"><span class="t">Switch room</span><span class="s">Routes mentions to agents, keeps the debate in one thread, stores verdicts as room documents.</span></div>
       <div class="node" role="listitem"><span class="t">desk-chief</span><span class="s">Runs two rounds, verifies, orders a precedent check, writes the card.</span></div>
-      <div class="node" role="listitem"><span class="t">Three analysts</span><span class="s">Fundamental (SEC filings), technical (prices), sentiment (news). They answer only the chief.</span></div>
+      <div class="node" role="listitem"><span class="t">Three analysts</span><span class="s">Fundamental (SEC filings), technical (prices), sentiment (news). They act when the chief or a person mentions them, and always reply to the chief.</span></div>
       <div class="node key" role="listitem"><span class="t">Evidence ledger</span><span class="s">Python tools write every fact as <span class="id">E1</span>, <span class="id">E2</span> … with source, tier and link.</span></div>
     </div>
     <div class="steps">
@@ -388,7 +388,7 @@ footer p { color: var(--mist-soft); font-size: 14px; }
   <div class="wrap">
     <div class="section-head">
       <p class="eyebrow">One chat, start to end</p>
-      <h2>Seven minutes, eighteen steps,<br><span class="dim">one thread.</span></h2>
+      <h2>About seven minutes, eighteen steps,<br><span class="dim">one thread.</span></h2>
       <p class="lede">Every message between people and agents crosses the Switch room. Every number is made by a tool on the host machine and lands in the ledger first. Scroll sideways on a phone.</p>
     </div>
     <div class="seq-wrap" role="img" aria-label="Sequence of one Stock Desk run, from the first mention to the saved verdict">
@@ -439,8 +439,8 @@ footer p { color: var(--mist-soft); font-size: 14px; }
   <div class="wrap">
     <div class="section-head">
       <p class="eyebrow">A real run · r-20261107-05 · 7 Nov 2026</p>
-      <h2>Seven minutes in #desk-nke.</h2>
-      <p class="lede">Excerpts from the actual Slack thread. Every number below is in the run's ledger. <a href="https://github.com/karan-patel11/stock-desk/blob/main/docs/desk-run-nke-2.md" target="_blank" rel="noopener">Read the full run record</a>.</p>
+      <h2>About seven minutes in #desk-nke.</h2>
+      <p class="lede">Excerpts from the actual Slack thread. Every number below is in the run's ledger. <a href="https://github.com/karan-patel11/stock-desk/blob/main/docs/desk-run-nke-2.md" target="_blank" rel="noopener">Read the full run record</a>. Each outlook is the chief's own judgment from the verified evidence, not a vote of the analysts' stances, so it can differ from one analyst: for the long term, technical was bearish, fundamental neutral, and the chief called it Neutral.</p>
     </div>
     <div class="thread">
       <div class="msg"><div class="av h"><svg aria-hidden="true"><use href="#i-you"/></svg></div><div><div class="who">Karan <span>11:31 PM</span></div><div class="body"><span class="mono">@desk-chief analyze NKE</span></div></div></div>
@@ -522,7 +522,7 @@ footer p { color: var(--mist-soft); font-size: 14px; }
         <p class="note">Spell agent names exactly. A misspelled name gets no reply. Tickers with news names ready: NKE, AAPL, MSFT, TSLA, KO, PG, DIS, HD, WMT, COST.</p></div></div>
       <div class="how"><span class="n">2</span><div><h4>Answer the goal question</h4><p>If you didn't name a goal, the chief asks. Reply in its thread, with the mention.</p>
         <div class="cmd"><pre>@desk-chief 2</pre><button class="copybtn" type="button">Copy</button></div></div></div>
-      <div class="how"><span class="n">3</span><div><h4>Watch, or step in</h4><p>The debate stays in the thread; the card appears in the channel in about 7 to 10 minutes. These work at any time:</p>
+      <div class="how"><span class="n">3</span><div><h4>Watch, or step in</h4><p>The debate stays in the thread; the card appears in the channel in about seven minutes. These work at any time:</p>
         <div class="cmds">
           <div class="c">@desk-chief explain E159</div><div>What fact E159 is, its source and tier, whether it passed, and who cited it</div>
           <div class="c">@desk-chief evidence</div><div>The full evidence table for the run, as a file</div>
@@ -548,7 +548,7 @@ scripts/smoke_live.sh NKE</pre><button class="copybtn" type="button">Copy</butto
       <div class="how"><span class="n">4</span><div><h4>Load the desk template</h4><p>Templates → Import template → choose <code>switch/desk-team.template.yaml</code> → Save → Use template. Fill in the ticker, the absolute path of this folder, the venv Python (<code>…/stock-desk/.venv/bin/python</code>) and your Slack connection, then Create all.</p></div></div>
       <div class="how"><span class="n">5</span><div><h4>Check each agent's instructions</h4><p>Open each desk agent in Switch Console (Your Agents → the agent → Agent settings). If its instructions still show <code>{python}</code> or <code>{stockdesk_home}</code>, copy the filled-in text and paste it over the box, then Save. For desk-chief, from the repo folder:</p>
         <div class="cmd"><pre>python3 -c 'import sys; t = open(f"agents/{sys.argv[1]}.md").read(); print(t.replace("$STOCKDESK_HOME", sys.argv[2]).replace("$STOCKDESK_PY", sys.argv[3]), end="")' chief "$(pwd)" "$(pwd)/.venv/bin/python" | pbcopy</pre><button class="copybtn" type="button">Copy</button></div>
-        <p class="note">Repeat with fundamental, technical and sentiment. On our Switch Console (0.40.1) the template left those placeholders unfilled.</p></div></div>
+        <p class="note">Repeat with fundamental, technical and sentiment. On our Switch Console (0.40.1) the template left those placeholders unfilled. <code>pbcopy</code> is macOS-only; on Linux, end the command with <code>| xclip -selection clipboard</code> (or <code>| wl-copy</code> on Wayland).</p></div></div>
       <div class="how"><span class="n">6</span><div><h4>Let teammates talk to the desk</h4><p>By default each agent answers only its owner ("Who can talk to your agent: Me and my agents"). For a team, change that setting on all four desk agents so the people in the room can reach them. Anyone who can address the agents can start tool runs on the host machine, so only do this in a channel you trust.</p></div></div>
       <div class="how"><span class="n">7</span><div><h4>Reset and run</h4><p>In the Slack channel, send each reset as its own plain message, then start a run.</p>
         <div class="cmd"><pre>!reset @desk-chief
@@ -580,7 +580,7 @@ scripts/smoke_live.sh NKE</pre><button class="copybtn" type="button">Copy</butto
 
 <footer>
   <div class="wrap">
-    <div><a class="brand" href="#top">Stock Desk</a><p>WeMakeDevs Flip the Switch · Track 01, Best Business Workflow</p></div>
+    <div><a class="brand" href="#top">Stock Desk</a><p><a href="https://karan-patel11.github.io/QuantEra-AI/" target="_blank" rel="noopener">Part of QuantEra AI Research Lab</a></p></div>
     <p><a href="https://github.com/karan-patel11/stock-desk" target="_blank" rel="noopener">github.com/karan-patel11/stock-desk</a> · Research only, not financial advice.</p>
   </div>
 </footer>

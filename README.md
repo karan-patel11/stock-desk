@@ -512,3 +512,7 @@ docs/                       DECISIONS.md, Stage 0 runbook and results, desk run 
 tests/                      offline tests and synthetic fixtures
 ~/.stockdesk/               data home (not in the repo): config.env, evidence/, cache/, config/
 ```
+
+## Submission
+
+Submitted to WeMakeDevs Flip the Switch (November 2026). The judged version is the git tag hackathon-submission.
