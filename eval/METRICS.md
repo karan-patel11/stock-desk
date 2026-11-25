@@ -165,6 +165,12 @@ The 3 same-day NKE runs in the eval batch. For each horizon (short, medium, long
 `confidence.json` `direction` values are identical. Reported as stable horizons/3. **M10b:** the same for the
 `confidence` label. Reported alongside, never instead.
 
+**Prior verdicts removed (added 24 Nov 2026, before any live run).** The chief's instructions (`chief.md` step 2)
+read any room document named `verdict-NKE-*` and quote its first line, so run 2 would see run 1's verdict and run 3
+would see run 2's. M10 measures same-data stability with prior verdicts removed: before NKE runs 2 and 3 the
+`verdict-NKE-*` document is deleted from the room, and the run sheet records the chief's step-2 line for every NKE
+run. A run whose step-2 line quotes an earlier verdict anyway is reported as such, not dropped.
+
 ### M11: Unsupported qualitative claims (claim 1 gap; Phase 5)
 
 `verify.py` checks numbers only. `eval/extract_claims.py` lists sentences in final-round analyst reports (eval
@@ -235,6 +241,11 @@ metrics; the long-sentiment rule already required the tone entry.
 
 ## Changes
 
+- **24 Nov 2026, before any eval run (live-batch results seen: none):** M10 now measures same-data stability with
+  prior verdicts removed. Reason: `chief.md` step 2 quotes any earlier `verdict-<TICKER>-*` room document, so the three
+  same-day NKE runs would not be independent (and runs 2 and 3 would also collide with run 1's document name,
+  `verdict-NKE-<date>`, which is unique within a room). The protocol (eval/RUNBOOK.md) deletes that document before
+  runs 2 and 3. Confirmed in the instructions and in the installed package's identical `chief.md`; not yet observed live.
 - **24 Nov 2026, before any eval run (live-batch results seen: none):** M12 amended. Evidence is now an explicit
   allowlist of metric fact names per tool, not "≥1 entry from that tool". Reason: Phase 3 showed fund.py writes 2
   profile entries (SIC code, fiscal year end) before it refuses, so a fundamental stance passed after a refusal would
