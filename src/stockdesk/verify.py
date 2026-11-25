@@ -7,7 +7,12 @@ Report check:  verify.py --text-file report.txt [--run RUN]     (use - for stdin
                verify.py --text "report text" [--run RUN]
 
 Every check is appended to evidence/<run>/verifications.jsonl (one line per evidence ID checked:
-id, claimed, result PASS|FAIL|WITHDRAWN, detail, checked_at). Evidence entries are never changed.
+id, claimed, result PASS|FAIL|WITHDRAWN, detail, checked_at, source, source_sha256). Evidence entries are never changed.
+source is the report file's base name (--text-file only; null for --text, stdin, single checks and withdrawals);
+source_sha256 is the SHA-256 of the exact text checked (report mode; null for single checks and withdrawals), so a
+first check and a later re-check of the same file can be told apart even if the file was overwritten. The ADVICE
+row of each report check also carries numbers (figures found that look like claims) and uncited (how many of them
+had no citation).
 In report mode the PASS lines are written before the FAIL lines, so a failed number in a report is
 never hidden by another number citing the same ID. When a line cites several IDs, a failed number is
 logged against the cited IDs that no other number on that line matched (all of them if none qualifies). Uncited numbers have no ID and are not logged;
@@ -28,6 +33,7 @@ Both PASS and FAIL are normal results (exit 0); look at data.result.
 """
 from __future__ import annotations
 
+import hashlib
 import re
 import sys
 from dataclasses import dataclass
@@ -175,7 +181,9 @@ def advice_matches(text: str) -> list[dict[str, str]]:
     return found
 
 
-def verify_report(run: str, text: str, tol: float | None) -> tuple[list[str], dict[str, Any]]:
+def verify_report(run: str, text: str, tol: float | None,
+                  source: str | None = None) -> tuple[list[str], dict[str, Any]]:
+    origin = {"source": source, "source_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest()}
     passes: list[dict[str, Any]] = []
     failures: list[dict[str, Any]] = []
     uncited: list[dict[str, Any]] = []
@@ -258,20 +266,24 @@ def verify_report(run: str, text: str, tol: float | None) -> tuple[list[str], di
     for item in passes:
         stored = entries[item["id"]]
         common.append_verification(run, item["id"], item["number"], "PASS",
-                                   f"report: matches stored {stored['value']} {stored['unit']}")
+                                   f"report: matches stored {stored['value']} {stored['unit']}", **origin)
     for item in failures:
         for evidence_id in item["blamed"]:
             stored = entries.get(evidence_id)
             if stored is None:
                 continue  # logged once below as not_found
             common.append_verification(run, evidence_id, item["number"], "FAIL",
-                                       f"report: {item['reason']}; stored {stored['value']} {stored['unit']}")
+                                       f"report: {item['reason']}; stored {stored['value']} {stored['unit']}",
+                                       **origin)
     for evidence_id in missing:
-        common.append_verification(run, evidence_id, None, "FAIL", "report: not_found: no such evidence ID in this run")
+        common.append_verification(run, evidence_id, None, "FAIL", "report: not_found: no such evidence ID in this run",
+                                   **origin)
     phrases = sorted({m["phrase"] for m in advice})
     common.append_verification(run, common.ADVICE_ID, phrases or None, "FAIL" if advice else "PASS",
                                ("advice words: " + "; ".join(f"{m['phrase']!r} in: {m['line']}" for m in advice))
-                               if advice else "report: no advice words")
+                               if advice else "report: no advice words",
+                               **origin, extra={"numbers": len(passes) + len(failures) + len(uncited),
+                                                "uncited": len(uncited)})
     found_ids = [i for i in cited_all if entries.get(i) is not None]
     return found_ids, {
         "result": result,
@@ -324,7 +336,8 @@ def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
             raise ToolError("bad_input", "a single check needs --value")
         evidence, data = verify_single(run, args.evidence_id.strip(), args.value, args.tol)
     else:
-        evidence, data = verify_report(run, _read_text(args), args.tol)
+        source = Path(args.text_file).name if args.text_file not in (None, "-") else None
+        evidence, data = verify_report(run, _read_text(args), args.tol, source=source)
     data["citations"] = common.citation_summary(run)
     return run, evidence, data
 

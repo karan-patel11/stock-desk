@@ -445,8 +445,13 @@ def _log_id_ok(log_id: str) -> bool:
     return log_id == ADVICE_ID or bool(EVIDENCE_ID_RE.match(log_id or ""))
 
 
-def append_verification(run: str, evidence_id: str, claimed: Any, result: str, detail: str) -> dict[str, Any]:
-    """Append one check to the run's log. One write of one line, under an exclusive lock, then fsync."""
+def append_verification(run: str, evidence_id: str, claimed: Any, result: str, detail: str, *,
+                        source: str | None = None, source_sha256: str | None = None,
+                        extra: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Append one check to the run's log. One write of one line, under an exclusive lock, then fsync.
+    source / source_sha256: the report file's name and the SHA-256 of the exact text checked (report mode);
+    None for single-ID checks and withdrawals. Readers must ignore keys they do not know: rows written before
+    these keys existed have neither."""
     if result not in VERIFY_RESULTS:
         raise ToolError("bad_input", f"result must be one of {VERIFY_RESULTS}")
     if not _log_id_ok(evidence_id):
@@ -455,7 +460,7 @@ def append_verification(run: str, evidence_id: str, claimed: Any, result: str, d
     if not run_dir.is_dir():
         raise ToolError("bad_input", f"run {run} not found under evidence/")
     record = {"id": evidence_id, "claimed": plain(claimed), "result": result, "detail": detail,
-              "checked_at": utc_iso()}
+              "checked_at": utc_iso(), "source": source, "source_sha256": source_sha256, **(extra or {})}
     line = (json.dumps(record, sort_keys=False) + "\n").encode("utf-8")
     fd = os.open(run_dir / VERIFICATIONS_FILE, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o644)
     try:

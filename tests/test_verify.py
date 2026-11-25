@@ -212,7 +212,8 @@ def test_single_checks_are_logged_and_entries_untouched(ledger):
     assert [r["result"] for r in records] == ["PASS", "FAIL"]
     assert records[0]["id"] == ids["growth"] and records[0]["claimed"] == "8.1%"
     assert "stored 0.0814" in records[1]["detail"] and records[1]["checked_at"].endswith("Z")
-    assert set(records[0]) == {"id", "claimed", "result", "detail", "checked_at"}
+    assert set(records[0]) == {"id", "claimed", "result", "detail", "checked_at", "source", "source_sha256"}
+    assert records[0]["source"] is None and records[0]["source_sha256"] is None
     assert (common.evidence_root() / run / f"{ids['growth']}.json").read_text() == before
 
 
@@ -341,3 +342,67 @@ def test_single_check_mode_does_not_scan_or_log_advice(ledger):
     run, ids = ledger
     single(run, ids["revenue"], "12.4B")
     assert "ADVICE" not in common.latest_verifications(run)
+
+
+# ---------------- report source fields (eval: first-pass result per report file) ----------------
+
+import hashlib
+
+
+def test_text_file_rows_carry_source_name_and_hash(ledger, tmp_path):
+    run, ids = ledger
+    report = tmp_path / "fundamental-r1.txt"
+    text = f"Revenue was $12.4B [{ids['revenue']}] and 9.9% growth [{ids['growth']}].\nVolume ran at 3.3x.\n"
+    report.write_text(text, encoding="utf-8")
+    verify.main(["--text-file", str(report), "--run", run])
+    rows = log(run)
+    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    assert rows and all(r["source"] == "fundamental-r1.txt" for r in rows)   # base name only, never the path
+    assert all(r["source_sha256"] == digest for r in rows)
+    advice = rows[-1]
+    assert advice["id"] == "ADVICE" and advice["numbers"] == 3 and advice["uncited"] == 1
+    assert [r["result"] for r in rows[:-1]] == ["PASS", "FAIL"]
+
+
+def test_recheck_of_an_overwritten_file_has_a_new_hash(ledger, tmp_path):
+    run, ids = ledger
+    report = tmp_path / "technical-r1.txt"
+    report.write_text(f"Growth 9.9% [{ids['growth']}].\n", encoding="utf-8")
+    verify.main(["--text-file", str(report), "--run", run])
+    report.write_text(f"Growth 8.1% [{ids['growth']}].\n", encoding="utf-8")
+    verify.main(["--text-file", str(report), "--run", run])
+    rows = [r for r in log(run) if r["id"] == "ADVICE"]
+    assert [r["source"] for r in rows] == ["technical-r1.txt"] * 2
+    assert rows[0]["source_sha256"] != rows[1]["source_sha256"]
+
+
+def test_text_mode_has_hash_but_no_source(ledger):
+    run, ids = ledger
+    verify.main(["--text", f"Growth 8.1% [{ids['growth']}].", "--run", run])
+    rows = log(run)
+    assert all(r["source"] is None and len(r["source_sha256"]) == 64 for r in rows)
+
+
+def test_withdrawal_has_null_source(ledger):
+    run, ids = ledger
+    verify.main([ids["growth"], "--withdraw", "--run", run])
+    assert log(run)[-1]["source"] is None and log(run)[-1]["source_sha256"] is None
+
+
+def test_old_format_rows_without_source_still_parse(ledger):
+    """Runs logged before source fields existed (all 7 Nov runs) must read exactly as before."""
+    run, ids = ledger
+    path = common.evidence_root() / run / common.VERIFICATIONS_FILE
+    old = [
+        {"id": ids["growth"], "claimed": "9.9%", "result": "FAIL", "detail": "x", "checked_at": "2026-11-07T01:00:00Z"},
+        {"id": ids["growth"], "claimed": "8.1%", "result": "PASS", "detail": "x", "checked_at": "2026-11-07T01:00:01Z"},
+        {"id": "ADVICE", "claimed": None, "result": "PASS", "detail": "x", "checked_at": "2026-11-07T01:00:01Z"},
+    ]
+    path.write_text("".join(json.dumps(r) + "\n" for r in old), encoding="utf-8")
+    verify.main([ids["revenue"], "--value", "12.4B", "--run", run])   # a new-format row after the old ones
+    assert len(common.read_verifications(run)) == 4
+    summary = common.citation_summary(run)
+    assert summary["display"] == "2/2" and summary["corrected"] == [ids["growth"]] and summary["uncorrected"] == []
+    from stockdesk import evidence_table
+    _, _, data = evidence_table.main(["--run", run])
+    assert data["citations"] == "2/2"

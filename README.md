@@ -431,7 +431,11 @@ the original `retrieved_at`. Clear the variable after the demo.
 ## Verification log
 
 `verify.py` never edits an evidence entry. Every check appends one line to `evidence/<run>/verifications.jsonl`:
-`{"id", "claimed", "result": "PASS"|"FAIL"|"WITHDRAWN", "detail", "checked_at"}`. The latest line per evidence ID wins,
+`{"id", "claimed", "result": "PASS"|"FAIL"|"WITHDRAWN", "detail", "checked_at", "source", "source_sha256"}`.
+`source` is the report file's base name for `--text-file` checks (null for `--text`, stdin, single checks and
+withdrawals); `source_sha256` is the SHA-256 of the exact text checked (null for single checks and withdrawals). Each
+report check's ADVICE line also records `numbers` and `uncited` counts. Logs written before 24 Nov 2026 have none of
+these keys; readers ignore keys they don't use. The latest line per evidence ID wins,
 so a FAIL followed by a PASS (corrected figure) or WITHDRAWN (claim dropped) counts as corrected.
 
 **Citation pass rate** ("Citations verified: 14/14"): among the evidence IDs with at least one check, leaving out those

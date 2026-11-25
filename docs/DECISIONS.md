@@ -28,6 +28,10 @@ built, what is deferred and what is not done.
   dates in `precedent.py`, are `unrated`. So precedent excess returns are `unrated` too.
 - Verification is an append-only log, `evidence/<run>/verifications.jsonl`; the latest record per ID wins. `verify.py E12
   --withdraw` records a withdrawn claim.
+- Report-mode rows record `source` (the `--text-file` base name, not the path, so no home directory lands in a run)
+  and `source_sha256` (hash of the exact text checked); the ADVICE row adds `numbers` and `uncited` counts. Added for
+  the evaluation (24 Nov 2026): without them a log line can't be traced to the report it checked, and uncited numbers
+  were never stored. Additive only; older logs lack the keys and every reader ignores unknown keys.
 - Citation pass rate: IDs with a check, minus withdrawn ones; share whose latest result is PASS.
 - `confidence.py` decides confidence by fixed rules (README, "How confidence works"). Sentiment can only lower it.
   Long term is capped at medium. No percentage scores. If precedent was not run, only "no precedent check" applies, not
