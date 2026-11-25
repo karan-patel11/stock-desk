@@ -80,8 +80,10 @@ is counted. An attempt that fails or aborts is M1 = no and is not re-run. The on
 (Slack outage, Claude usage limit, the machine sleeping): that attempt still counts as M1 = no, with the cause
 "infrastructure", and gets exactly one re-run, which is its own row and its own attempt. A run the operator rescues by
 typing into its thread (anything other than the goal answer that changes how the run proceeds) counts as M1 = no even
-if it reaches `end`. M1 is reported as completed/attempts, and also broken down by cause (infrastructure, rescued,
-other).
+if it reaches `end`. An attempt that **stalls**, with no new message in its thread for 15 minutes, is declared
+failed at that point (M1 = no, cause "stalled"). M1 is reported as completed/attempts, and also broken down by cause:
+infrastructure, rescued, stalled, other. Only "infrastructure" gets the one re-run. (Stall rule and the four causes
+added 24 Nov 2026, before any live run.)
 
 ### M2: Wall-clock minutes, start to end (claim 5)
 
@@ -251,7 +253,8 @@ metrics; the long-sentiment rule already required the tone entry.
 
 - **24 Nov 2026, before any eval run (live-batch results seen: none):** M1 counts attempts. A failed or aborted run is
   not re-run, except once after an infrastructure fault (logged with the reason); a rescued run counts as failed; failed
-  attempts stay in the counts. Runs are one at a time: the chief's `round goal`, `round status` and `round next` act on
+  attempts stay in the counts. An attempt with no new message in its thread for 15 minutes is declared failed
+  ("stalled"); failure causes are infrastructure, rescued, stalled, other. Runs are one at a time: the chief's `round goal`, `round status` and `round next` act on
   the shared current-run pointer (tests/test_eval_run_pointer.py), so overlapping runs would write into each other.
 - **24 Nov 2026, before any eval run (live-batch results seen: none):** M10 now measures same-data stability with
   prior verdicts removed. Reason: `chief.md` step 2 quotes any earlier `verdict-<TICKER>-*` room document, so the three

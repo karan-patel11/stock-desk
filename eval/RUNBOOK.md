@@ -202,8 +202,8 @@ stability ticker).
   counts as failed (decision 8).
 - **One run at a time:** the next kickoff only after the previous run's `end`, or after you mark it failed.
 - **A run is declared failed** when it aborts, errors out, stalls (no new message in its thread for 15 minutes), or is
-  rescued. Write the cause in Outcome: infrastructure (with what happened), rescued, or other. Only infrastructure gets
-  a re-run, once.
+  rescued. Write the cause in Outcome: infrastructure (with what happened), rescued, stalled, or other. Only
+  infrastructure gets a re-run, once (METRICS.md, M1).
 - Order (NKE spread across the batch): NKE, JNJ, CVX, JPM, CAT, NNE, NKE, PG, FIG, NVDA, BABA, GOOGL, ZZZQ, NKE, XOM.
   Roughly 7 minutes per run plus 10-minute gaps: about 4½ hours.
 
@@ -213,7 +213,7 @@ The run id is in the chief's first thread message (`r-YYYYMMDD-NN`).
 
 Extra columns: **Docs** is the per-ticker `!list-documents` gate ("clean"). **Step-2 line** is the chief's second
 message, either "No earlier verdict for TICKER." or a quoted verdict. **Stray** is the number of top-level "I finished
-without replying." messages during the run. **Outcome** is ended, or failed: infrastructure / rescued / other.
+without replying." messages during the run. **Outcome** is ended, or failed: infrastructure / rescued / stalled / other.
 **Export** (NKE runs 1 and 7 only) is "exported" once that run's verdict
 document is saved to its run folder, before it is deleted.
 

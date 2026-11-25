@@ -117,6 +117,10 @@ Future fixes, not built: say "20-F / foreign filer" in fund.py's refusal detail 
   `verdict-<TICKER>-*` room document, so repeat runs in one room are not independent, and two same-day runs try to save
   the same document name. Confirmed in the instructions (identical in the installed package); to be observed live.
   For M10 the protocol removes the earlier NKE verdict before runs 2 and 3.
+- **The chief's round calls rely on a shared pointer.** chief.md's `round goal`, `round status` and `round next` calls
+  omit `--run` and rely on the shared current-run pointer, so overlapping runs would write into each other's state
+  ([`tests/test_eval_run_pointer.py`](../tests/test_eval_run_pointer.py): a late `round goal` from an older run lands
+  on the newest run). Mitigated in the eval by running one at a time.
 - **`!reset` behaviour:** _pending the Phase 4 reset token test (eval/RUNBOOK.md, section 1b)._
 - _Limits of the evaluation itself to be written in Phase 6._
 
@@ -127,3 +131,4 @@ Future fixes, not built: say "20-F / foreign filer" in fund.py's refusal detail 
 - confidence.py derives each analyst's status from the ledger itself instead of taking it as an argument.
 - `stockdesk doctor` warns when a ticker has no news name.
 - `stockdesk doctor` verifies the Claude Code CLI is signed in, not only installed.
+- The chief passes `--run` explicitly on every `round` call.
