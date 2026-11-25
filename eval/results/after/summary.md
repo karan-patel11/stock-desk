@@ -24,6 +24,7 @@ Runs: 3 (r-20261107-05 NKE, r-20261107-11 AAPL, r-20261107-18 MSFT)
   - long: low 3, medium 0, high 0 (n=3)
   - under the CAP rule instead: 2/9 horizon labels change: r-20261107-05 short high → medium; r-20261107-05 medium high → medium
 - **M12 analyst status matches the ledger:** 27/27 (0 failures; 95% upper bound 3/27) checks; runs with a mismatch 0/3 (0 failures; 95% upper bound 3/3); no_data with entries (for review) 0
+  - superseded definition (any entry from the tool): 27/27 (0 failures; 95% upper bound 3/27) checks
 
 ## Excluded runs
 

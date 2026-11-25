@@ -103,8 +103,10 @@ Future fixes, not built: say "20-F / foreign filer" in fund.py's refusal detail 
 - **"clean" means unchanged, not verified correct.** A source report with a real error produces a failing clean
   variant (`r-20261107-02`, above).
 - **Confidence rules are code, but their inputs come from the chief's instructions.** Which analyst is `no_data` or
-  `not_measured` is passed in by the chief; M12 checks those inputs against the ledger. Pre-eval runs: 27/27 checks
-  match ([`eval/results/after/summary.md`](../eval/results/after/summary.md)).
+  `not_measured` is passed in by the chief; M12 checks those inputs against the ledger, counting only allowlisted
+  metric entries as evidence (amended before any live run, because fund.py leaves 2 profile entries when it refuses).
+  Pre-eval runs: 27/27 checks match under the amended definition and 27/27 under the superseded one
+  ([`eval/results/after/summary.md`](../eval/results/after/summary.md)).
 - **The shipped config has news names for only 10 tickers.** `news.py --ticker` refuses any other ticker
   (`bad_input`), so it gets no sentiment until the user adds a name; nothing warns beforehand. The Phase 4 batch adds
   names for its tickers (`eval/config/news_names.json`).
