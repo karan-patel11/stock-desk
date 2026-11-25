@@ -61,6 +61,12 @@ Corpus: 34 report files from 6 runs with a ledger. Unchanged, 32/34 pass verify 
 - `r-20261107-18/fundamental-r1/wrong_id_similar` (wrong_id_similar): line 5: `• Revenue grew YoY in every quarter shown, including +18.297% [E216] and a derived +17.747% [E214] in the two quarters before the latest`; E206 -> E216; +18.297% matches both ('Revenue growth YoY, MSFT quarter ended 2026-03-31 vs 2025-03-31' / 'Operating income growth YoY, MSFT quarter ended 2026-06-30 vs 2025-06-30'); 
 - `r-20261107-18/fundamental-r2/wrong_id_similar` (wrong_id_similar): line 5: `• Quarter ended 2026-03-31: revenue +18.297% [E216], gross profit +16.4309% [E207]`; E206 -> E216; +18.297% matches both ('Revenue growth YoY, MSFT quarter ended 2026-03-31 vs 2025-03-31' / 'Operating income growth YoY, MSFT quarter ended 2026-06-30 vs 2025-06-30'); 
 
+## False alarms, adjusted (not pre-registered)
+
+Pre-registered: 4/61. Adjusted, not pre-registered: 2/59, leaving out 2 variants of 1 source report(s) with a pre-existing error (`eval/labels/source_errors.csv`):
+
+- `r-20261107-02/technical-r1.txt`: Line 4 'RSI(14) at 75.0 [E169]' against stored 61.050897: a wrong figure planted by a scripted dev check (whole run 2 s; report and all 4 log rows stamped 01:26:58Z; FAIL then WITHDRAWN in the same second). verify catching it is a true positive.
+
 ## wrong_id_similar, hand-classified
 
 6 variants found. Labels: `eval/labels/wrong_id_similar.csv` (one person, by inspection).

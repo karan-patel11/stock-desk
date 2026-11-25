@@ -1,0 +1,2 @@
+run,report,reason
+r-20261107-02,technical-r1.txt,"Line 4 'RSI(14) at 75.0 [E169]' against stored 61.050897: a wrong figure planted by a scripted dev check (whole run 2 s; report and all 4 log rows stamped 01:26:58Z; FAIL then WITHDRAWN in the same second). verify catching it is a true positive."

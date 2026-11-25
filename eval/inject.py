@@ -449,11 +449,32 @@ def write_outputs(rows: list[dict[str, Any]], out: Path, seed: int) -> None:
     lines += [f"- `{r['variant']}` ({r['type']}): line {r['line']}: `{r['after']}`; {r['detail']}" for r in misses] or ["None."]
     lines += ["", f"## Faults not flagged at the injected change ({len(unflagged)})", ""]
     lines += [f"- `{r['variant']}` ({r['type']}): line {r['line']}: `{r['after']}`; {r['detail']}" for r in unflagged] or ["None."]
+    lines += ["", "## False alarms, adjusted (not pre-registered)", ""] + adjusted_section(rows)
     lines += ["", "## wrong_id_similar, hand-classified", ""] + similar_section(rows)
     (out / "injection.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 LABELS = HERE / "labels" / "wrong_id_similar.csv"
+SOURCE_ERRORS = HERE / "labels" / "source_errors.csv"
+
+
+def adjusted_section(rows: list[dict[str, Any]]) -> list[str]:
+    """clean means unchanged, not verified correct. Source reports listed in eval/labels/source_errors.csv hold a real
+    error, so their clean and legit_round variants failing is a true positive. This view leaves them out; the
+    pre-registered count above is unchanged."""
+    errors = {}
+    if SOURCE_ERRORS.is_file():
+        with open(SOURCE_ERRORS, encoding="utf-8") as handle:
+            errors = {(r["run"], r["report"]): r["reason"] for r in csv.DictReader(handle)}
+    benign = [r for r in rows if r["type"] in BENIGN and r["expected"] != "n/a"]
+    kept = [r for r in benign if (r["run"], r["report"]) not in errors]
+    dropped = [r for r in benign if (r["run"], r["report"]) in errors]
+    out = [f"Pre-registered: {sum(r['actual'] == 'FAIL' for r in benign)}/{len(benign)}. "
+           f"Adjusted, not pre-registered: {sum(r['actual'] == 'FAIL' for r in kept)}/{len(kept)}, leaving out "
+           f"{len(dropped)} variants of {len(errors)} source report(s) with a pre-existing error "
+           f"(`eval/labels/source_errors.csv`):", ""]
+    out += [f"- `{run}/{report}`: {reason}" for (run, report), reason in errors.items()]
+    return out
 
 
 def similar_section(rows: list[dict[str, Any]]) -> list[str]:
