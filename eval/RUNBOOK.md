@@ -10,6 +10,12 @@ Prepared 24 Nov 2026. **Nothing here has been run.** You run the batch; afterwar
 2. **News names:** option (a). Every run uses the identical override `eval/config/news_names.json`: the 10 shipped
    names unchanged plus one per batch ticker; ZZZQ has none on purpose. Installed in step 1.
 3. **Goals:** NKE ×3 use `all`; every other run uses `medium`.
+4. **Mention test: PASS with a caveat** (24 Nov 2026, Switch Console v0.41.1). s0-technical also posted
+   "I finished without replying." at the channel's top level. That message is an expected Switch side effect: log a
+   count per run in the run sheet. It counts as a failure only if it appears with no reply in the run's thread.
+5. **Room:** one fresh room for the whole batch (section 1b). Prior verdicts are removed before NKE runs 2 and 3
+   (METRICS.md, M10).
+6. **Gates:** every box in section 6 is ticked before run 1, including `network_gdelt` PASS and the reset token test.
 
 ## 1. Required before run 1 (stop if any step fails)
 
@@ -44,6 +50,11 @@ stockdesk doctor
 ```
 
 - [ ] No FAIL line. **If any check FAILs, stop.**
+- [ ] `network_gdelt` is **PASS**. A WARN (GDELT rate limiting) is not good enough: wait (GDELT can block for hours, and
+  every refused request can extend the block), run `stockdesk doctor` once more later, and do not start the batch on a
+  WARN. Re-run doctor right before run 1 for this gate.
+- [ ] `claude_code` PASS only means the CLI exists. Also check it is signed in: `claude auth login` if in doubt
+  (24 Nov 2026: doctor passed while it was signed out, and every agent session failed).
 
 ```bash
 stockdesk template --mention-test
@@ -62,6 +73,43 @@ stockdesk template
   at: ________
 - [ ] Record: `stockdesk --version` ________ · eval commit (`git rev-parse --short origin/eval`) ________ ·
   Switch Console version ________ · Claude model the agents run ________
+
+## 1b. Desk import, fresh room, reset test (after the mention test)
+
+**Remove the four old desk agents** (they call the old repo-path tools). You do this; deletion can't be undone. From
+the Switch docs (Agent maintenance): Switch Console → **Your Agents** → the agent's menu → **Remove** → tick
+**Also delete this agent in Switch** → **Remove**. Or, in a Slack room: `!delete-agent @desk-chief`, then within 2
+minutes `!delete-agent @desk-chief confirm`. Repeat for desk-fundamental, desk-technical, desk-sentiment. (Renaming
+instead: the pencil beside the agent's name; the new template still needs the old names to be free.) Deleting the
+agents does not delete the old `desk-nke` room or its documents.
+
+**Import the desk into a fresh room.** The template's kickoff posts `@desk-chief analyze {ticker}` as soon as the
+room exists, so importing starts an analysis. Suggested: import with ticker **ZZZQ**. The room becomes `desk-ZZZQ`,
+a new name with no history, and the kickoff run fails closed fast: ZZZQ isn't in the SEC map, has no news name (so no
+GDELT request), and gets one Yahoo price lookup. Don't answer its goal question. Record its run id in the run sheet as
+"setup kickoff (excluded)".
+
+```bash
+stockdesk template --ticker ZZZQ
+```
+
+Switch Console v0.41.1: **Templates → Create template ▾ → Import a file…** → `desk-team.template.yaml` → Save → Use
+template → pick your Slack connection → Create. If it says a template with that name already exists (HTTP 409), tell
+me before deleting anything.
+
+- [ ] In the new room, `!list-documents` shows `desk-rules` and no `verdict-*` document (no 7 Nov documents carried
+  over).
+- [ ] `!reset-all-agents` (or the four `!reset @…`), and wait for the replies.
+
+**Reset token test (gate).** For desk-chief, then desk-technical:
+1. In a new thread A: `@desk-chief remember the token PELICAN-42. Reply OK only.`
+2. As its own plain message: `!reset @desk-chief`, and wait for the reply.
+3. In a new thread B: `@desk-chief what token did I ask you to remember? If you don't know, say NONE.`
+- **Pass:** it can't recall the token (NONE). **Fail:** it answers PELICAN-42. On a fail, stop and tell me. Per the
+  Switch docs (Room commands), `!reset` "Clears an agent’s context and reconnects it", and whether an agent supports it
+  is decided when you run it. We would then test a fresh room and, failing that, removing and re-adding the agent in
+  Switch Console, and make whichever clears it the between-runs step.
+- Then `!reset` both agents again so the test itself isn't in their context.
 
 Do not set `STOCKDESK_CACHE_TTL_HOURS` or run `scripts/warm_demo.sh`: warming changes what sentiment sees. The news
 cache keeps its 1-hour default, so a later NKE run may reuse news fetched within the hour by an earlier one. That is
@@ -101,6 +149,11 @@ stability ticker).
 
 - **Outside US market hours** (partial-bar limitation): run the whole batch on one day when the market is closed, e.g.
   a Saturday, or weekdays only after 16:30 or before 09:00 ET. All three NKE runs on the same ET calendar day.
+- **Before NKE runs 2 and 3 only:** delete the room document `verdict-NKE-<date>` written by the previous NKE run.
+  You own the room, so you can delete its documents (Switch docs, Rooms: in the Gateway, open the room's page, then
+  its documents). Then `!list-documents` must show no `verdict-NKE-*`. The card stays in Slack and the evidence table
+  can be regenerated from the ledger on disk. Without this, the chief quotes the earlier verdict (`chief.md` step 2),
+  and saving the new one may collide with the same-day document name.
 - **`!reset` each agent before every run**, each as its own plain message: `!reset @desk-chief`,
   `!reset @desk-fundamental`, `!reset @desk-technical`, `!reset @desk-sentiment`. Wait for all four replies.
 - **At least 10 minutes from one run's end to the next kickoff**, for GDELT spacing and Claude usage.
@@ -115,26 +168,44 @@ stability ticker).
 
 The run id is in the chief's first thread message (`r-YYYYMMDD-NN`).
 
-| # | Ticker | Goal | Run id | Kickoff time (ET) | End time (ET) | Anything typed mid-run | Anything odd |
-|---|---|---|---|---|---|---|---|
-| 1 | NKE | all | | | | | |
-| 2 | JNJ | medium | | | | | |
-| 3 | CVX | medium | | | | | |
-| 4 | JPM | medium | | | | | |
-| 5 | CAT | medium | | | | | |
-| 6 | NNE | medium | | | | | |
-| 7 | NKE | all | | | | | |
-| 8 | PG | medium | | | | | |
-| 9 | FIG | medium | | | | | |
-| 10 | NVDA | medium | | | | | |
-| 11 | BABA | medium | | | | | |
-| 12 | GOOGL | medium | | | | | |
-| 13 | ZZZQ | medium | | | | | |
-| 14 | NKE | all | | | | | |
-| 15 | XOM | medium | | | | | |
+Extra columns: **Step-2 line** is the chief's second message, either "No earlier verdict for TICKER." or a quoted
+verdict. **Stray** is the number of top-level "I finished without replying." messages during the run.
+
+| # | Ticker | Goal | Run id | Kickoff time (ET) | End time (ET) | Step-2 line | Stray | Anything typed mid-run | Anything odd |
+|---|---|---|---|---|---|---|---|---|---|
+| 0 | ZZZQ | setup kickoff (excluded) | | | | | | | |
+| 1 | NKE | all | | | | | | | |
+| 2 | JNJ | medium | | | | | | | |
+| 3 | CVX | medium | | | | | | | |
+| 4 | JPM | medium | | | | | | | |
+| 5 | CAT | medium | | | | | | | |
+| 6 | NNE | medium | | | | | | | |
+| 7 | NKE | all | | | | | | | |
+| 8 | PG | medium | | | | | | | |
+| 9 | FIG | medium | | | | | | | |
+| 10 | NVDA | medium | | | | | | | |
+| 11 | BABA | medium | | | | | | | |
+| 12 | GOOGL | medium | | | | | | | |
+| 13 | ZZZQ | medium | | | | | | | |
+| 14 | NKE | all | | | | | | | |
+| 15 | XOM | medium | | | | | | | |
 
 ## 5. After the batch
 
 Tell me it's done and paste the run sheet. I will write the run ids to `eval/results/batch_runs.txt` (the scorer's
 eval-batch list), run `eval/score_runs.py` on `~/.stockdesk/evidence`, compute M10 from the three NKE runs, and show
 the table, with XOM reported separately as "thin ledger after CIK change", without interpreting it.
+
+## 6. Pre-run gate checklist (tick every box, then start run 1)
+
+- [ ] **Install:** `pipx install --force "git+https://github.com/karan-patel11/stock-desk@eval"` and `stockdesk init`
+  done; `stockdesk --version` recorded.
+- [ ] **Name check:** `python3 eval/check_news_names.py --home ~/.stockdesk` ends `PASS`, file identical to the eval copy.
+- [ ] **Doctor:** `stockdesk doctor` shows no FAIL, **`network_gdelt` PASS** (re-run right before run 1), and the
+  Claude Code CLI is signed in.
+- [ ] **Mention test:** PASS (`MENTION TEST PASSED` in one thread; stray top-level message logged, not a failure).
+- [ ] **Old agents removed:** the four old desk-* agents deleted (or renamed), and the new desk imported from the
+  packaged template.
+- [ ] **Fresh room:** `!list-documents` in the new room shows no `verdict-*` document.
+- [ ] **Reset token test:** desk-chief and desk-technical both answer NONE after `!reset` (section 1b).
+- [ ] **Conditions:** market closed for the whole batch, and all three NKE runs fit on one ET calendar day.
