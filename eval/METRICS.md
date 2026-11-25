@@ -172,8 +172,31 @@ batch) that make a factual or causal claim with no number. Up to 40 are sampled 
 labelled by hand by one person: `supported`, `unsupported` or `not_checkable`. No LLM judging, no pre-filled labels.
 Reported as counts per label per analyst, with the sample size.
 
+### M12: Analyst status passed to confidence.py matches the ledger (claim 2, claim 3; added 24 Nov 2026)
+
+confidence.py's rules are code, but the stances it receives (including `no_data` and `not_measured`) are passed by
+the chief following its instructions. M12 checks those inputs against the run's own ledger. For each horizon in
+`confidence.json`, for each analyst, using `inputs` and the run's `E*.json` entries (by `tool`):
+
+| Analyst | Passed | Match when | Mismatch when |
+|---|---|---|---|
+| fundamental | a stance (bullish, bearish, neutral) | fund.py wrote ≥1 entry | fund.py wrote 0 entries |
+| technical | a stance | tech.py wrote ≥1 entry | tech.py wrote 0 entries |
+| sentiment, short and medium | `not_measured` or `no_data` | always (interim mode measures neither window) | any measured value (positive, negative, neutral) |
+| sentiment, long | a measured value | news.py wrote an "Average news tone" entry | no tone entry |
+| sentiment, long | `no_data` | no tone entry | a tone entry exists |
+| fundamental, technical | `no_data` | always counted as a match; also counted as "no_data with entries" when that tool wrote ≥1 entry, listed for review | — |
+
+`no_data` for fundamental or technical with entries present is not a mismatch: an analyst may have entries but none
+that bear on that horizon. Reported as matches/checks (3 horizons × 3 analysts per run), runs with any mismatch, and
+the "no_data with entries" count.
+
 ## Changes
 
+- **24 Nov 2026, before any eval run (live results: none yet):** M12 added. Found in Phase 3: confidence.py's
+  inputs, including `no_data` and `not_measured`, come from the chief's instructions, not from code, so a correct
+  label can rest on a wrong input. M12 checks those inputs against the ledger. Pre-eval runs were already scored for
+  M1–M7; M12 is computed for them too and reported separately, as for every other metric.
 - **24 Nov 2026, before any eval run or scoring:** pre-eval set narrowed from 7 runs to the 3 desk runs.
   r-20261107-01, -02, -07 and -08 meet the file rule but are scripted tool checks (timings and planted text above),
   so they say nothing about how the desk behaves. Decided by the project owner after the run timings were checked.
