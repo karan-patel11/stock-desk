@@ -29,6 +29,7 @@ Matching rules (all done in code, never by an LLM):
 - Default tolerance is the rounding error implied by the figure as displayed
   (12.4B allows +/-0.05B). --tol adds a relative tolerance on the stored value.
 - A missing ID is FAIL with reason not_found.
+- Digits inside a URL (http:// or https:// up to the next whitespace or closing bracket) are never numbers.
 Both PASS and FAIL are normal results (exit 0); look at data.result.
 """
 from __future__ import annotations
@@ -57,6 +58,9 @@ _NUM_IN_TEXT = re.compile(
 )
 _CITE = re.compile(r"\[\s*(E\d+(?:\s*[,;/]\s*E\d+)*)\s*\]")
 _IGNORE = [
+    # A URL is never a figure: http(s):// up to the next whitespace or closing bracket. Masked first, so the digits
+    # in an article id or a dated path are not read as uncited numbers. A number after the URL is still scanned.
+    re.compile(r"https?://[^\s\])>]*", re.IGNORECASE),
     re.compile(r"\br-\d{8}-\d+\b"),
     re.compile(r"\b\d{4}-\d{2}-\d{2}\b"),
     re.compile(r"\bFY\s?\d{2,4}\b", re.IGNORECASE),

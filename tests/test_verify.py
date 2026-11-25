@@ -406,3 +406,38 @@ def test_old_format_rows_without_source_still_parse(ledger):
     from stockdesk import evidence_table
     _, _, data = evidence_table.main(["--run", run])
     assert data["citations"] == "2/2"
+
+
+# ---------------- URLs are never figures (eval Phase 2 bug: URL digits counted as uncited numbers) ----------------
+
+@pytest.mark.parametrize("line", [
+    "• 2025-11-26 · HPQ: shares fell after results. https://www.itiger.com/news/2586528264",   # r-20261107-11
+    '• MSFT warned on margins. https://edition.mv/world/37145',                              # r-20261107-18
+    "Source (http://example.com/2026/11/07/item-12345) is linked.",
+    "See <https://example.com/a/9999>.",
+])
+def test_digits_inside_a_url_are_not_numbers(ledger, line):
+    run, _ = ledger
+    _, data = report(run, line)
+    assert data["result"] == "PASS" and data["uncited"] == [] and data["checked"] == 0
+
+
+def test_uncited_plain_number_on_a_url_line_is_still_caught(ledger):
+    run, _ = ledger
+    _, data = report(run, "Volume ran at 3.3x, per https://example.com/news/2586528264 and 4,500 more trades.")
+    assert data["result"] == "FAIL"
+    assert [u["number"] for u in data["uncited"]] == ["3.3x", "4,500"]
+
+
+def test_number_after_a_closing_bracket_is_still_scanned(ledger):
+    run, _ = ledger
+    _, data = report(run, "Coverage (https://example.com/item/777) counted 1,250 articles.")
+    assert [u["number"] for u in data["uncited"]] == ["1,250"]
+
+
+def test_cited_figure_on_a_url_line_is_still_checked(ledger):
+    run, ids = ledger
+    _, ok = report(run, f"Growth 8.1% [{ids['growth']}], source https://example.com/q/12345")
+    _, bad = report(run, f"Growth 9.9% [{ids['growth']}], source https://example.com/q/12345")
+    assert ok["result"] == "PASS" and ok["checked"] == 1
+    assert bad["result"] == "FAIL" and [f["number"] for f in bad["failed"]] == ["9.9%"]

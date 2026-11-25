@@ -160,8 +160,8 @@ def test_legacy_log_leaves_m3_blank_and_reverifies_saved_text(runs):
     assert "log predates source field" in row["notes"]
     rep = reports[(LEGACY, "technical-r1.txt")]
     assert rep["basis"] == "final report text" and rep["first_result"] == ""
-    # The URL's digits count as an uncited number: current verify.py behaviour, recorded as-is.
-    assert (rep["last_numbers"], rep["last_uncited"]) == ("2", "1")
+    # The URL's digits are not a number (verify.py fix; before it, this was ("2", "1")).
+    assert (rep["last_numbers"], rep["last_uncited"]) == ("1", "0")
     assert row["m5_final_basis"] == "final report text" and row["m6_card_last"] == ""
 
 
