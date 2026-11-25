@@ -13,8 +13,8 @@ Prepared 24 Nov 2026. **Nothing here has been run.** You run the batch; afterwar
 4. **Mention test: PASS with a caveat** (24 Nov 2026, Switch Console v0.41.1). s0-technical also posted
    "I finished without replying." at the channel's top level. That message is an expected Switch side effect: log a
    count per run in the run sheet. It counts as a failure only if it appears with no reply in the run's thread.
-5. **Room:** one fresh room for the whole batch (section 1b). Prior verdicts are removed before NKE runs 2 and 3
-   (METRICS.md, M10).
+5. **Room:** one fresh room for the whole batch, created by the template import (section 1b). Every run, every ticker,
+   happens in that room. Prior verdicts are exported to disk and then removed before NKE runs 2 and 3 (METRICS.md, M10).
 6. **Gates:** every box in section 6 is ticked before run 1, including `network_gdelt` PASS and the reset token test.
 
 ## 1. Required before run 1 (stop if any step fails)
@@ -83,6 +83,19 @@ minutes `!delete-agent @desk-chief confirm`. Repeat for desk-fundamental, desk-t
 instead: the pencil beside the agent's name; the new template still needs the old names to be free.) Deleting the
 agents does not delete the old `desk-nke` room or its documents.
 
+**The old 7 Nov room (`desk-NKE`, Slack `#desk-nke`).** Rooms are created only when a template is used (Switch docs,
+How templates work: "Switch creates each agent, then the room"). Posting `@desk-chief analyze NKE` never creates or
+reuses a room; the chief works in whichever room the message is posted in, and it reads only that room's documents.
+The old room held `verdict-NKE-2026-11-07` (docs/desk-run-nke-2.md). Its full text is on disk as
+`evidence/r-20261107-05/reports/verdict-doc.md` (393 lines, card plus evidence table) and in the backup tarball.
+Deleting the old agents takes them out of that room, and the newly imported agents are new agents that are not members
+of it. So it cannot reach the batch unless someone posts batch messages in `#desk-nke` or invites the new agents there.
+- **Recommended: archive the old room, don't delete it.** Archiving is reversible and leaves the room, its documents and
+  its Slack channel as they are (Switch docs, Rooms: open the room's page in the Gateway and select **Archive room**).
+  Deleting is irreversible and not needed.
+- Optional check before archiving: in `#desk-nke`, `!list-documents`, and note what it lists in the run sheet.
+- Never post batch messages in `#desk-nke`.
+
 **Import the desk into a fresh room.** The template's kickoff posts `@desk-chief analyze {ticker}` as soon as the
 room exists, so importing starts an analysis. Suggested: import with ticker **ZZZQ**. The room becomes `desk-ZZZQ`,
 a new name with no history, and the kickoff run fails closed fast: ZZZQ isn't in the SEC map, has no news name (so no
@@ -99,6 +112,10 @@ me before deleting anything.
 
 - [ ] In the new room, `!list-documents` shows `desk-rules` and no `verdict-*` document (no 7 Nov documents carried
   over).
+- Run 0 (the ZZZQ kickoff) goes in the run sheet as **excluded: setup kickoff created by the template import, goal never
+  answered, not a batch run**. It never reaches a verdict, so it writes no `verdict-ZZZQ-*` document. Run 13 (ZZZQ) can
+  use the same room: it starts a new run id, and the per-ticker document gate below confirms no `verdict-ZZZQ-*` exists
+  first.
 - [ ] `!reset-all-agents` (or the four `!reset @…`), and wait for the replies.
 
 **Reset token test (gate).** For desk-chief, then desk-technical:
@@ -149,11 +166,20 @@ stability ticker).
 
 - **Outside US market hours** (partial-bar limitation): run the whole batch on one day when the market is closed, e.g.
   a Saturday, or weekdays only after 16:30 or before 09:00 ET. All three NKE runs on the same ET calendar day.
-- **Before NKE runs 2 and 3 only:** delete the room document `verdict-NKE-<date>` written by the previous NKE run.
-  You own the room, so you can delete its documents (Switch docs, Rooms: in the Gateway, open the room's page, then
-  its documents). Then `!list-documents` must show no `verdict-NKE-*`. The card stays in Slack and the evidence table
-  can be regenerated from the ledger on disk. Without this, the chief quotes the earlier verdict (`chief.md` step 2),
-  and saving the new one may collide with the same-day document name.
+- **Before every ticker's first run (all 15 runs, in the batch room):** `!list-documents`, and confirm there is no
+  `verdict-<TICKER>-*` for that ticker. Other tickers' verdicts may be listed; the chief reads only its own ticker's.
+  Write "clean" in the run sheet's Docs column.
+- **Before NKE runs 2 and 3 only: export, then delete** the `verdict-NKE-<date>` written by the previous NKE run.
+  1. Export: in the Gateway, open the batch room's page, open the document, copy its full text, then in Terminal
+     (RUN = the previous NKE run's id):
+     `pbpaste > ~/.stockdesk/evidence/RUN/reports/verdict-doc.md`
+     This matches where r-20261107-05's verdict is kept. It stays in the run folder, outside every repo. Don't put it in
+     `eval/results/`, which is pushed to a public repo.
+  2. Check: `head -1 ~/.stockdesk/evidence/RUN/reports/verdict-doc.md` starts with `NKE ·`, and
+     `wc -l` shows more than 10 lines. Write "exported" in the run sheet.
+  3. Delete the document in the Gateway (you own the room, so you can delete its documents). Then `!list-documents` must
+     show no `verdict-NKE-*`. Without this, the chief quotes the earlier verdict (`chief.md` step 2), and saving the new
+     one may collide with the same-day document name.
 - **`!reset` each agent before every run**, each as its own plain message: `!reset @desk-chief`,
   `!reset @desk-fundamental`, `!reset @desk-technical`, `!reset @desk-sentiment`. Wait for all four replies.
 - **At least 10 minutes from one run's end to the next kickoff**, for GDELT spacing and Claude usage.
@@ -168,27 +194,29 @@ stability ticker).
 
 The run id is in the chief's first thread message (`r-YYYYMMDD-NN`).
 
-Extra columns: **Step-2 line** is the chief's second message, either "No earlier verdict for TICKER." or a quoted
-verdict. **Stray** is the number of top-level "I finished without replying." messages during the run.
+Extra columns: **Docs** is the per-ticker `!list-documents` gate ("clean"). **Step-2 line** is the chief's second
+message, either "No earlier verdict for TICKER." or a quoted verdict. **Stray** is the number of top-level "I finished
+without replying." messages during the run. **Export** (NKE runs 1 and 7 only) is "exported" once that run's verdict
+document is saved to its run folder, before it is deleted.
 
-| # | Ticker | Goal | Run id | Kickoff time (ET) | End time (ET) | Step-2 line | Stray | Anything typed mid-run | Anything odd |
-|---|---|---|---|---|---|---|---|---|---|
-| 0 | ZZZQ | setup kickoff (excluded) | | | | | | | |
-| 1 | NKE | all | | | | | | | |
-| 2 | JNJ | medium | | | | | | | |
-| 3 | CVX | medium | | | | | | | |
-| 4 | JPM | medium | | | | | | | |
-| 5 | CAT | medium | | | | | | | |
-| 6 | NNE | medium | | | | | | | |
-| 7 | NKE | all | | | | | | | |
-| 8 | PG | medium | | | | | | | |
-| 9 | FIG | medium | | | | | | | |
-| 10 | NVDA | medium | | | | | | | |
-| 11 | BABA | medium | | | | | | | |
-| 12 | GOOGL | medium | | | | | | | |
-| 13 | ZZZQ | medium | | | | | | | |
-| 14 | NKE | all | | | | | | | |
-| 15 | XOM | medium | | | | | | | |
+| # | Ticker | Goal | Run id | Kickoff time (ET) | End time (ET) | Docs | Step-2 line | Stray | Export | Anything typed mid-run | Anything odd |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | ZZZQ | excluded: setup kickoff from the template import, goal never answered | | | | | | | | | |
+| 1 | NKE | all | | | | | | | (before run 7) | | |
+| 2 | JNJ | medium | | | | | | |  | | |
+| 3 | CVX | medium | | | | | | |  | | |
+| 4 | JPM | medium | | | | | | |  | | |
+| 5 | CAT | medium | | | | | | |  | | |
+| 6 | NNE | medium | | | | | | |  | | |
+| 7 | NKE | all | | | | | | | (before run 14) | | |
+| 8 | PG | medium | | | | | | |  | | |
+| 9 | FIG | medium | | | | | | |  | | |
+| 10 | NVDA | medium | | | | | | |  | | |
+| 11 | BABA | medium | | | | | | |  | | |
+| 12 | GOOGL | medium | | | | | | |  | | |
+| 13 | ZZZQ | medium | | | | | | |  | | |
+| 14 | NKE | all | | | | | | |  | | |
+| 15 | XOM | medium | | | | | | |  | | |
 
 ## 5. After the batch
 
@@ -206,6 +234,41 @@ the table, with XOM reported separately as "thin ledger after CIK change", witho
 - [ ] **Mention test:** PASS (`MENTION TEST PASSED` in one thread; stray top-level message logged, not a failure).
 - [ ] **Old agents removed:** the four old desk-* agents deleted (or renamed), and the new desk imported from the
   packaged template.
-- [ ] **Fresh room:** `!list-documents` in the new room shows no `verdict-*` document.
+- [ ] **Fresh room:** `!list-documents` in the new batch room shows no `verdict-*` document; the old `desk-NKE` room is
+  archived (not deleted), and no batch message goes to `#desk-nke`.
+- [ ] **Backup:** the evidence tarball is copied to a second location and its SHA-256 matches (section 8).
 - [ ] **Reset token test:** desk-chief and desk-technical both answer NONE after `!reset` (section 1b).
 - [ ] **Conditions:** market closed for the whole batch, and all three NKE runs fit on one ET calendar day.
+
+## 7. What you do by hand, in order
+
+1. **Back up a second copy** of the old runs (section 8) and check the checksum.
+2. **Remove the four old agents:** Switch Console → Your Agents → desk-chief's menu → Remove → tick **Also delete this
+   agent in Switch** → Remove. The same for desk-fundamental, desk-technical, desk-sentiment.
+3. **Archive the old room:** Gateway → the `desk-NKE` room's page → **Archive room**. (Optional first: `!list-documents`
+   in `#desk-nke`, noted in the run sheet.)
+4. **Generate the template** in Terminal: `stockdesk template --ticker ZZZQ`.
+5. **Import it:** Switch Console → Templates → Create template ▾ → Import a file… → `desk-team.template.yaml` → Save →
+   Use template → Slack connection → Create. This creates the four agents and the batch room `desk-ZZZQ`, and posts the
+   kickoff (run 0).
+6. **In the batch room:** don't answer run 0's goal question; note its run id as run 0 (excluded).
+7. **In the batch room:** `!list-documents` → only `desk-rules`, no `verdict-*`.
+8. **In the batch room:** `!reset-all-agents`, and wait for the replies.
+9. **Reset token test** for desk-chief, then desk-technical (section 1b). Both must answer NONE. Then `!reset` both.
+10. **Terminal:** `stockdesk doctor`. No FAIL, and `network_gdelt` PASS. On a WARN, stop and try again later.
+11. **Tick section 6**, then run the batch in the batch room, in section 3's order. Before each run: `!reset` the four
+    agents, then the per-ticker `!list-documents` gate. Before NKE runs 2 and 3: export, then delete, the previous NKE
+    verdict.
+
+## 8. Second backup copy of the old runs
+
+The 7 Nov runs exist only on this disk (`evidence/` is git-ignored). Never commit `evidence/` or `~/.stockdesk/` to any
+repo. SHA-256 of the backup made on 24 Nov 2026:
+`4037bff169d8481932288a10041bb2f152fcffba5bed5af351842fdd1b3bfe87`. To copy it to a second location you choose (an
+external drive, for example) and check it, set DEST first:
+
+```bash
+DEST="/Volumes/YOUR-DRIVE/stock-desk-backup"; mkdir -p "$DEST" && cp ~/Downloads/stock-desk-evidence-backup-2026-11-24.tar.gz "$DEST"/ && shasum -a 256 ~/Downloads/stock-desk-evidence-backup-2026-11-24.tar.gz "$DEST"/stock-desk-evidence-backup-2026-11-24.tar.gz
+```
+
+Both lines must show the hash above.
