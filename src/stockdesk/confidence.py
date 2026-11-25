@@ -17,7 +17,12 @@ Rule (README, "How confidence works"):
     news sentiment opposes the direction (negative vs bullish, positive vs bearish; never when neutral)
   high (score 2) only if there were no penalties, every citation checked passes (at least one check),
   and every CORE analyst for the horizon agrees with the direction. Sentiment can only lower confidence.
-  final = clamp(min(score, CAP[horizon]), 0, 2).
+  then two ceilings, applied after the penalties (they are not penalties):
+    MISSING_CAP: if any analyst is not_measured or no_data for the horizon, at most medium (decided 24 Nov 2026;
+      no_data keeps its -1 on top). In the interim news mode sentiment is not_measured for short and medium,
+      so in practice high is unreachable until sentiment measures those windows.
+    CAP[horizon]: long is at most medium.
+  final = clamp(min(score, MISSING_CAP if any missing, CAP[horizon]), 0, 2).
 The result is a judgment label, not a fact: it is not written as evidence, only to
 evidence/<run>/confidence.json, keyed by horizon.
 """
@@ -40,6 +45,8 @@ ANALYST_NAMES = {"fund": "fundamental", "tech": "technical", "sent": "sentiment"
 STANCES = ("bullish", "bearish", "neutral", "no_data")
 SENTIMENTS = ("positive", "negative", "neutral", "no_data", "not_measured")
 LONG_CAP_REASON = "capped: about 3 years of filings, no valuation data"
+MISSING_CAP = 1  # medium
+MISSING = ("no_data", "not_measured")
 _EVENTS_USED = re.compile(r"^Events used, (\d+)-session window\b")
 
 
@@ -81,9 +88,15 @@ def score(horizon: str, direction: str, stances: dict[str, str], precedent: dict
     value = 1 - len(reasons)
     if not reasons and citations["all_pass"] and all(stances[a] == direction for a in CORE[horizon]):
         value = 2
+    missing = [f"{ANALYST_NAMES[key]} {stances[key].replace('_', ' ')}" for key in ("fund", "tech", "sent")
+               if stances[key] in MISSING]
     capped = min(value, CAP[horizon])
+    if missing:
+        capped = min(capped, MISSING_CAP)
     shown = reasons + notes
-    if horizon == "long" and capped < value:
+    if missing and value > MISSING_CAP:
+        shown.append("capped at medium: " + ", ".join(missing))
+    if horizon == "long" and value > CAP[horizon]:
         shown.append(LONG_CAP_REASON)
     return LEVELS[max(0, min(capped, 2))], shown
 

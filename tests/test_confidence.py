@@ -197,13 +197,53 @@ def not_measured(horizon):
     return f"sentiment: not measured for {horizon} (interim mode)"
 
 
+def capped(*missing):
+    return "capped at medium: " + ", ".join(missing)
+
+
 @pytest.mark.parametrize("horizon,stances", [
     ("short", {"tech": "bullish", "fund": "bearish"}),
     ("medium", {"tech": "bullish", "fund": "bullish"}),
 ])
-def test_not_measured_is_no_penalty_and_high_is_unaffected(clean, horizon, stances):
+def test_not_measured_alone_caps_at_medium(clean, horizon, stances):
+    """CAP rule (24 Nov 2026): a ceiling, not a penalty. Without it this would be high."""
     data = conf(clean, horizon=horizon, sent="not_measured", **stances)
-    assert data["confidence"] == "high" and data["reasons"] == [not_measured(horizon)]
+    assert data["confidence"] == "medium"
+    assert data["reasons"] == [not_measured(horizon), capped("sentiment not measured")]
+
+
+@pytest.mark.parametrize("horizon,stances", [
+    ("short", {"tech": "bullish", "fund": "bearish"}),
+    ("medium", {"tech": "bullish", "fund": "bullish"}),
+])
+@pytest.mark.parametrize("sent", ["neutral", "positive"])
+def test_all_measured_is_unchanged_by_the_cap(clean, horizon, stances, sent):
+    data = conf(clean, horizon=horizon, sent=sent, **stances)
+    assert data["confidence"] == "high" and data["reasons"] == []
+
+
+@pytest.mark.parametrize("key", ["fund", "tech", "sent"])
+def test_no_data_still_takes_its_penalty_and_the_cap_shows_no_extra_reason(clean, key):
+    data = conf(clean, **{key: "no_data"})
+    name = confidence.ANALYST_NAMES[key]
+    assert data["confidence"] == "low" and data["reasons"] == [f"{name}: no data"]  # 1 - 1 = low; cap already met
+
+
+def test_cap_never_raises(run_id):
+    data = conf(run_id, sent="not_measured")  # no precedent, no checks: low stays low
+    assert data["confidence"] == "low"
+
+
+@pytest.mark.parametrize("sent,fund,expected", [
+    ("not_measured", "bullish", "medium"),   # would be high
+    ("neutral", "bullish", "high"),
+    ("not_measured", "neutral", "medium"),   # medium already; no cap reason
+    ("no_data", "bullish", "low"),
+])
+def test_score_table(sent, fund, expected):
+    level, _ = confidence.score("medium", "bullish", {"fund": fund, "tech": "bullish", "sent": sent},
+                                {5: 4, 30: 4, 90: 4, 250: 4}, {"uncorrected": [], "all_pass": True})
+    assert level == expected
 
 
 def test_not_measured_keeps_medium_where_no_data_drops_to_low(clean):
@@ -216,7 +256,7 @@ def test_not_measured_keeps_medium_where_no_data_drops_to_low(clean):
 def test_not_measured_on_long_still_hits_the_cap(clean):
     data = conf(clean, horizon="long", fund="bullish", sent="not_measured")
     assert data["confidence"] == "medium"
-    assert data["reasons"] == [not_measured("long"), confidence.LONG_CAP_REASON]
+    assert data["reasons"] == [not_measured("long"), capped("sentiment not measured"), confidence.LONG_CAP_REASON]
 
 
 def test_not_measured_does_not_hide_real_penalties(run_id):

@@ -34,7 +34,7 @@ built, what is deferred and what is not done.
   were never stored. Additive only; older logs lack the keys and every reader ignores unknown keys.
 - Citation pass rate: IDs with a check, minus withdrawn ones; share whose latest result is PASS.
 - `confidence.py` decides confidence by fixed rules (README, "How confidence works"). Sentiment can only lower it.
-  Long term is capped at medium. No percentage scores. If precedent was not run, only "no precedent check" applies, not
+  Long term is capped at medium, and so is any horizon with an analyst not_measured or no_data. No percentage scores. If precedent was not run, only "no precedent check" applies, not
   also "fewer than 3 events". Medium uses the smaller event count of its 30- and 90-day windows.
 - `evidence_table.py` renders the run's ledger for the verdict document.
 - GDELT calls are spaced at least 5.5 s apart across processes, cached, and return `rate_limited` on HTTP 429 without
@@ -56,10 +56,14 @@ built, what is deferred and what is not done.
   labelled "unweighted, tiers not applied". Short and medium get `not_measured`; long reads the tone at -1.0 / +1.0.
   News tone can only lower confidence.
 - `not_measured` is not `no_data`. `confidence.py --sent not_measured` gives no penalty and adds the reason
-  "sentiment: not measured for <horizon> (interim mode)". `no_data` keeps its -1: that covers a failed or refused news
-  call, a missing 90-day tone, and insufficient_coverage. Counting the missing 14- and 30-day windows as `no_data`
-  would force short and medium confidence to low on every run, so they are `not_measured`. High never depended on
-  sentiment.
+  "sentiment: not measured for <horizon> (interim mode)". **Revised 24 Nov 2026 (CAP):** any horizon with an analyst
+  `not_measured` or `no_data` is capped at medium, a ceiling applied after the penalties. Reason: high should not be
+  reachable on a horizon where one of the three analysts measured nothing. Effect: short and medium can't be high in
+  interim mode. Re-scoring the 6 complete 7 Nov runs changed 4 of 18 horizon labels, all high to medium
+  (r-20261107-05 and r-20261107-08, short and medium); the other 14 are unchanged.
+- `no_data` keeps its -1: that covers a failed or refused news call, a missing 90-day tone, and insufficient_coverage.
+  Counting the missing 14- and 30-day windows as `no_data` would force short and medium confidence to low on every
+  run, so they are `not_measured`. Sentiment's stance never counts toward high; since CAP, its absence blocks high.
 
 ## Horizons and output (built)
 
