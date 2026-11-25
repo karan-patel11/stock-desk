@@ -49,11 +49,12 @@ def runs(tmp_path):
     d = make_run(COMPLETE, [("2099-01-01T10:00:00Z", "start"), ("2099-01-01T10:00:30Z", "goal medium"),
                             ("2099-01-01T10:02:00Z", "round 2"), ("2099-01-01T10:04:00Z", "stop"),
                             ("2099-01-01T10:05:30Z", "end")])
-    put(COMPLETE, "Revenue", 12_400_000_000, "USD")                           # E1
-    put(COMPLETE, "Revenue growth YoY", 0.0814, "ratio")                      # E2
-    put(COMPLETE, "Close", 61.4, "USD")                                       # E3
+    put(COMPLETE, "Revenue", 12_400_000_000, "USD", tool="fund.py")           # E1
+    put(COMPLETE, "Revenue growth YoY", 0.0814, "ratio", tool="fund.py")      # E2
+    put(COMPLETE, "Close", 61.4, "USD", tool="tech.py")                       # E3
     for window in (5, 30, 90, 250):                                           # E4-E7
         put(COMPLETE, f"Events used, {window}-session window, TSTCO", 4, "count", tool="precedent.py")
+    put(COMPLETE, "Average news tone, query 'TSTCO', last 90 days", 0.31, "tone", tool="news.py")   # E8
     check(d, "fundamental-r1.txt", "Revenue $12.4B [E1]; growth 9.9% [E2].\n")      # first check FAIL
     check(d, "fundamental-r1.txt", "Revenue $12.4B [E1]; growth 8.1% [E2].\n")      # correction: PASS
     check(d, "technical-r1.txt", "Close 61.4 [E3].\nVolume ran at 3.3x.\n")          # FAIL: 1 uncited
@@ -120,6 +121,8 @@ def test_complete_run_every_column(runs):
         "dir_short": "bullish", "dir_medium": "bullish", "dir_long": "bullish",
         "conf_short": "medium", "conf_medium": "medium", "conf_long": "medium",
         "cap_short": "medium", "cap_medium": "medium", "cap_long": "medium",
+        # fund/tech stances with fund.py/tech.py entries; sentiment not_measured short/medium, neutral long + tone entry
+        "m12_checks": "9", "m12_match": "9", "m12_nodata_with_entries": "0",
         "notes": "",
     }
 
@@ -139,6 +142,7 @@ def test_aborted_run_every_column(runs):
         "m7_rule": "CAP", "m7_horizons": "", "m7_match": "", "m7b_match": "",
         "dir_short": "", "dir_medium": "", "dir_long": "", "conf_short": "", "conf_medium": "", "conf_long": "",
         "cap_short": "", "cap_medium": "", "cap_long": "",
+        "m12_checks": "", "m12_match": "", "m12_nodata_with_entries": "",
         "notes": "M2: no end event; report check for technical-r1.txt has no ADVICE row (log ends mid-check); "
                  "M5: 1 of 2 final-round reports have no scored check; no confidence.json",
     }
@@ -192,3 +196,31 @@ def test_keep_rule_is_the_7_nov_rule():
     args = ("medium", "bullish", {"fund": "bullish", "tech": "bullish", "sent": "not_measured"},
             {5: 4, 30: 4, 90: 4, 250: 4}, {"uncorrected": [], "all_pass": True})
     assert keep_rule.score(*args)[0] == "high" and confidence.score(*args)[0] == "medium"
+
+
+# ---------------- M12: analyst status passed to confidence.py vs the ledger ----------------
+
+FULL = {"fund.py": 3, "tech.py": 2, "news.py": 5}
+
+
+@pytest.mark.parametrize("horizon,inputs,tools,tone,expected", [
+    ("medium", {"fund": "bullish", "tech": "bullish", "sent": "not_measured"}, FULL, True, [True, True, True]),
+    ("long", {"fund": "bullish", "tech": "bullish", "sent": "neutral"}, FULL, True, [True, True, True]),
+    # sentiment passed as measured while news.py wrote nothing (the M12 example)
+    ("long", {"fund": "bullish", "tech": "bullish", "sent": "neutral"}, {"fund.py": 3, "tech.py": 2}, False, [True, True, False]),
+    # a measured short-term sentiment: news.py measures no short window
+    ("short", {"fund": "bullish", "tech": "bullish", "sent": "positive"}, FULL, True, [True, True, False]),
+    # no_data for long while the tone entry exists
+    ("long", {"fund": "bullish", "tech": "bullish", "sent": "no_data"}, FULL, True, [True, True, False]),
+    # no_data for long with no tone entry (GDELT refused): a match
+    ("long", {"fund": "bullish", "tech": "bullish", "sent": "no_data"}, FULL, False, [True, True, True]),
+    # stances with an empty ledger (r-20261107-07)
+    ("short", {"fund": "bearish", "tech": "bearish", "sent": "not_measured"}, {}, False, [False, False, True]),
+])
+def test_m12_rules(horizon, inputs, tools, tone, expected):
+    assert [ok for _, ok, _, _ in score_runs.m12_checks(horizon, inputs, tools, tone)] == expected
+
+
+def test_m12_no_data_with_entries_is_a_match_listed_for_review():
+    checks = score_runs.m12_checks("medium", {"fund": "no_data", "tech": "no_data", "sent": "no_data"}, FULL, True)
+    assert [(a, ok, nd) for a, ok, nd, _ in checks] == [("fund", True, True), ("tech", True, True), ("sent", True, False)]

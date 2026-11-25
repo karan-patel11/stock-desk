@@ -54,6 +54,30 @@ SCRIPTED = {
 }
 FIRST_INCLUDED_DATE = "20261107"
 LEGACY_NOTE = "log predates source field"
+ANALYST_TOOL = {"fund": "fund.py", "tech": "tech.py", "sent": "news.py"}
+MEASURED_SENT = ("positive", "negative", "neutral")
+TONE_FACT = "Average news tone"
+
+
+def m12_checks(horizon: str, inputs: dict[str, Any], tools: dict[str, int], has_tone: bool) -> list[tuple[str, bool, bool, str]]:
+    """(analyst, match, no_data_with_entries, reason) for one horizon. Rules: METRICS.md, M12."""
+    out = []
+    for key in ("fund", "tech"):
+        stance, entries = inputs.get(key), tools.get(ANALYST_TOOL[key], 0)
+        if stance == "no_data":
+            out.append((key, True, entries > 0, ""))
+        else:
+            ok = entries > 0
+            out.append((key, ok, False, "" if ok else f"{key} passed {stance} but {ANALYST_TOOL[key]} wrote 0 entries"))
+    sent = inputs.get("sent")
+    if horizon in ("short", "medium"):
+        ok = sent in ("not_measured", "no_data")
+        out.append(("sent", ok, False, "" if ok else f"sentiment passed {sent} for {horizon}; news.py measures no {horizon} window"))
+    elif sent == "no_data":
+        out.append(("sent", not has_tone, False, "" if not has_tone else "sentiment passed no_data but a tone entry exists"))
+    else:
+        out.append(("sent", has_tone, False, "" if has_tone else f"sentiment passed {sent} but news.py wrote no tone entry"))
+    return out
 
 RUN_COLUMNS = [
     "run", "root", "set", "exclusion_reason", "ticker", "goal",
@@ -65,6 +89,7 @@ RUN_COLUMNS = [
     "m6_advice_checks", "m6_advice_fails", "m6_last_advice", "m6_card_last", "m6_report_first_fails",
     "m6_report_last_fails",
     "m7_rule", "m7_horizons", "m7_match", "m7b_match",
+    "m12_checks", "m12_match", "m12_nodata_with_entries",
     "dir_short", "dir_medium", "dir_long", "conf_short", "conf_medium", "conf_long",
     "cap_short", "cap_medium", "cap_long",
     "notes",
@@ -358,6 +383,19 @@ def score_run(run_dir: Path, eval_runs: set[str]) -> tuple[dict[str, Any], list[
             row["m6_report_first_fails"] = sum(r["first_advice"] == "FAIL" for r in scored)
             row["m6_report_last_fails"] = sum(r["last_advice"] == "FAIL" for r in report_rows if r["last_advice"])
 
+    # Ledger by tool (M12)
+    tools: dict[str, int] = {}
+    has_tone = False
+    for path in run_dir.glob("E*.json"):
+        try:
+            entry = read_json(path)
+        except ValueError:
+            notes.append(f"{path.name} is not JSON")
+            continue
+        tools[entry.get("tool")] = tools.get(entry.get("tool"), 0) + 1
+        if entry.get("tool") == "news.py" and str(entry.get("fact", "")).startswith(TONE_FACT):
+            has_tone = True
+
     # M7
     row["m7_rule"] = "CAP" if row["set"] == "eval" else "KEEP"
     rule = confidence.score if row["set"] == "eval" else keep_rule.score
@@ -369,6 +407,7 @@ def score_run(run_dir: Path, eval_runs: set[str]) -> tuple[dict[str, Any], list[
             notes.append("confidence.json is not JSON")
         if stored is not None:
             horizons = matches = b_checked = b_matches = 0
+            m12_total = m12_ok = m12_nd = 0
             for horizon in HORIZONS:
                 entry = stored.get(horizon)
                 if not isinstance(entry, dict):
@@ -387,6 +426,12 @@ def score_run(run_dir: Path, eval_runs: set[str]) -> tuple[dict[str, Any], list[
                     notes.append(f"M7: {horizon} inputs incomplete ({exc})")
                     continue
                 horizons += 1
+                for analyst, ok, nd, reason in m12_checks(horizon, inputs, tools, has_tone):
+                    m12_total += 1
+                    m12_ok += ok
+                    m12_nd += nd
+                    if not ok:
+                        notes.append(f"M12: {horizon} {reason}")
                 level, _ = rule(horizon, entry["direction"], stances, precedent, citations)
                 if level == entry.get("confidence"):
                     matches += 1
@@ -403,6 +448,8 @@ def score_run(run_dir: Path, eval_runs: set[str]) -> tuple[dict[str, Any], list[
                         notes.append(f"M7b: {horizon} saved {entry['citations']} {citations['uncorrected']}, "
                                      f"log at computed_at gives {seen['display']} {seen['uncorrected']}")
             row.update(m7_horizons=horizons, m7_match=matches)
+            if m12_total:
+                row.update(m12_checks=m12_total, m12_match=m12_ok, m12_nodata_with_entries=m12_nd)
             row["m7b_match"] = f"{b_matches}/{b_checked}" if b_checked else ""
     else:
         notes.append("no confidence.json")
@@ -501,11 +548,21 @@ def summarize(runs: list[dict[str, Any]], reports: list[dict[str, Any]]) -> str:
             saved = [r[f"conf_{horizon}"] for r in m7 if r[f"conf_{horizon}"]]
             dist = ", ".join(f"{lvl} {saved.count(lvl)}" for lvl in ("low", "medium", "high"))
             lines.append(f"  - {horizon}: {dist} (n={len(saved)})")
+        m12 = [r for r in group if r["m12_checks"] != ""]
+        if m12:
+            k12, n12 = sum(ints(m12, "m12_match")), sum(ints(m12, "m12_checks"))
+            bad = sum(1 for r in m12 if int(r["m12_match"]) < int(r["m12_checks"]))
+            lines_m12 = (f"- **M12 analyst status matches the ledger:** {count(k12, n12)} checks; runs with a mismatch "
+                         f"{count(bad, len(m12), failures=bad)}; no_data with entries (for review) "
+                         f"{sum(ints(m12, 'm12_nodata_with_entries'))}")
+        else:
+            lines_m12 = "- **M12 analyst status matches the ledger:** no runs with confidence.json"
         if "KEEP" in rules:
             changed = [(r["run"], hz, r[f"conf_{hz}"], r[f"cap_{hz}"]) for r in m7 for hz in HORIZONS
                        if r[f"conf_{hz}"] and r[f"cap_{hz}"] != r[f"conf_{hz}"]]
             lines.append(f"  - under the CAP rule instead: {len(changed)}/{h} horizon labels change"
                          + ("" if not changed else ": " + "; ".join(f"{a} {b} {c} → {d}" for a, b, c, d in changed)))
+        lines.append(lines_m12)
         lines.append("")
     excluded = [r for r in runs if r["set"] == "excluded"]
     lines += ["## Excluded runs", "", f"{len(excluded)} runs, no metrics.", "", "| Run | Ticker | Reason |", "|---|---|---|"]
