@@ -29,12 +29,11 @@ Decided 24 Nov 2026, before anything is scored.
 | Set | Runs | Used for |
 |---|---|---|
 | **Eval batch** | The runs listed in `eval/RUNBOOK.md`'s run sheet for the Phase 4 batch, and only those | All headline metrics (M1–M7, M10) |
-| **Pre-eval runs** | 7 Nov 2026 runs that reach `end` and have both `verifications.jsonl` and `confidence.json` | Reported separately, labelled "pre-eval runs". Never pooled with the eval batch |
-| **Excluded** | Every other run: runs dated before 7 Nov 2026, and incomplete runs (no `end`, or missing `verifications.jsonl` or `confidence.json`) | No metric. Listed below by id with the reason |
+| **Pre-eval runs** | 7 Nov 2026 desk runs (driven through Slack by the agents) that reach `end` and have both `verifications.jsonl` and `confidence.json` | Reported separately, labelled "pre-eval runs". Never pooled with the eval batch |
+| **Excluded** | Every other run: runs dated before 7 Nov 2026, incomplete runs (no `end`, or missing `verifications.jsonl` or `confidence.json`), and scripted tool checks | No metric. Listed below by id with the reason |
 | **Injection corpus** | Every `reports/*.txt` from any run that has an evidence ledger (at least one `E*.json`) | Phase 2 (M8) only |
 
-The pre-eval set under this rule is 7 runs: r-20261107-01, -02, -05, -07, -08, -11, -18. (The 24 Nov planning notes
-said "6"; r-20261107-01 was missed when they were drawn up, and it meets the same rule.)
+The pre-eval set under this rule is 3 runs: r-20261107-05 (NKE), r-20261107-11 (AAPL), r-20261107-18 (MSFT).
 
 Excluded runs (as of 24 Nov 2026, repo `evidence/`; `~/.stockdesk/evidence/` did not exist):
 
@@ -43,6 +42,7 @@ Excluded runs (as of 24 Nov 2026, repo `evidence/`; `~/.stockdesk/evidence/` did
 | r-20261105-01 … r-20261105-16 (16 runs) | Before 7 Nov. Also: -02, -03, -04, -06, -08, -09 never reach `end`; none have `verifications.jsonl` or `confidence.json` |
 | r-20261106-01, r-20261106-02 | Before 7 Nov; no `verifications.jsonl` or `confidence.json` |
 | r-20261107-03, -04, -06, -09, -10, -12, -13, -14, -15, -16, -17 | Reach `end` but have no `verifications.jsonl` and no `confidence.json` |
+| r-20261107-01, -02, -07, -08 | Scripted tool checks, not desk runs: every verify and confidence call lands within 1–2 seconds (-01: 01:14:24–25; -02: start to end in 2 s; -07: under 1 s with an empty ledger; -08: 4 s, 222 entries written in 3 s); the checked text was planted (a withdrawn "RSI 75.0", "A strong buy.", E5 = "1.0") |
 
 ## Files read
 
@@ -174,4 +174,6 @@ Reported as counts per label per analyst, with the sample size.
 
 ## Changes
 
-None yet.
+- **24 Nov 2026, before any eval run or scoring:** pre-eval set narrowed from 7 runs to the 3 desk runs.
+  r-20261107-01, -02, -07 and -08 meet the file rule but are scripted tool checks (timings and planted text above),
+  so they say nothing about how the desk behaves. Decided by the project owner after the run timings were checked.
