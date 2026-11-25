@@ -15,7 +15,19 @@ Prepared 24 Nov 2026. **Nothing here has been run.** You run the batch; afterwar
    count per run in the run sheet. It counts as a failure only if it appears with no reply in the run's thread.
 5. **Room:** one fresh room for the whole batch, created by the template import (section 1b). Every run, every ticker,
    happens in that room. Prior verdicts are exported to disk and then removed before NKE runs 2 and 3 (METRICS.md, M10).
-6. **Gates:** every box in section 6 is ticked before run 1, including `network_gdelt` PASS and the reset token test.
+6. **Re-runs (METRICS.md, M1):** a run that fails or aborts counts as failed and is **not** re-run. The one exception is
+   an infrastructure fault (Slack outage, Claude usage limit, the machine sleeping), which gets **exactly one** re-run,
+   logged with the reason. The failed attempt stays in the run sheet and in the counts; the re-run is a new row
+   (for example "4b").
+7. **One run at a time.** Never start the next run before the previous one reaches `end`, or is declared failed in the
+   run sheet. All runs share the current-run pointer: the chief's `round goal`, `round status` and `round next` take no
+   `--run`, so overlapping runs would write into each other's state. Tested: starting a new run while run 0 never ended
+   doesn't error, moves the pointer to the new run, and leaves run 0's files byte-identical
+   (tests/test_eval_run_pointer.py).
+8. **Mid-run typing:** anything you type in a run's thread other than the goal answer goes in the run sheet, verbatim.
+   If you type to rescue a run (to unstick it, correct it, or push it on), the run counts as **failed** even if it
+   reaches `end`. Write "rescued" in the Outcome column.
+9. **Gates:** every box in section 6 is ticked before run 1, including `network_gdelt` PASS and the reset token test.
 
 ## 1. Required before run 1 (stop if any step fails)
 
@@ -153,6 +165,7 @@ Sectors are GICS sectors.
 | 13 | ZZZQ | Invalid ticker | — | Well-formed, not a listed company | Absent from the 10,400-entry ticker map; no news name on purpose |
 | 1, 7, 14 | NKE | Stability (M10), goal `all` | Consumer Discretionary | The desk's reference ticker, 3 runs on one day | CIK 320187, SIC 3021; 10-Q to 2026-10-02 |
 | 15 | XOM | Thin ledger after CIK change (reported separately) | Energy | The ticker now maps to ExxonMobil Holdings Corp; fund.py follows the ticker map, so a mega-cap gets a thin ledger | CIK 2115436: 8-K12B 2026-07-01, 2 10-Qs, 4 revenue quarters; Exxon Mobil Corp's 20 10-Qs stay under CIK 34088 |
+| re-runs: add rows like 4b here (infrastructure faults only, once each) | | | | | | | | | | | | |
 
 **Large caps: 6 runs in 6 different GICS sectors:** JNJ (Health Care), CVX (Energy), CAT (Industrials), PG (Consumer
 Staples), NVDA (Information Technology), GOOGL (Communication Services). The large-cap group repeats no sector. FIG
@@ -186,7 +199,12 @@ stability ticker).
 - **Kickoff, with the goal given so the chief doesn't ask:**
   - NKE (runs 1, 7, 14): `@desk-chief analyze NKE all`
   - every other run: `@desk-chief analyze <TICKER> medium`
-- **Type nothing else mid-run** unless the desk asks. Anything you do type goes in the run sheet.
+- **Type nothing else mid-run** unless the desk asks. Anything you do type goes in the run sheet verbatim; a rescue
+  counts as failed (decision 8).
+- **One run at a time:** the next kickoff only after the previous run's `end`, or after you mark it failed.
+- **A run is declared failed** when it aborts, errors out, stalls (no new message in its thread for 15 minutes), or is
+  rescued. Write the cause in Outcome: infrastructure (with what happened), rescued, or other. Only infrastructure gets
+  a re-run, once.
 - Order (NKE spread across the batch): NKE, JNJ, CVX, JPM, CAT, NNE, NKE, PG, FIG, NVDA, BABA, GOOGL, ZZZQ, NKE, XOM.
   Roughly 7 minutes per run plus 10-minute gaps: about 4½ hours.
 
@@ -196,27 +214,28 @@ The run id is in the chief's first thread message (`r-YYYYMMDD-NN`).
 
 Extra columns: **Docs** is the per-ticker `!list-documents` gate ("clean"). **Step-2 line** is the chief's second
 message, either "No earlier verdict for TICKER." or a quoted verdict. **Stray** is the number of top-level "I finished
-without replying." messages during the run. **Export** (NKE runs 1 and 7 only) is "exported" once that run's verdict
+without replying." messages during the run. **Outcome** is ended, or failed: infrastructure / rescued / other.
+**Export** (NKE runs 1 and 7 only) is "exported" once that run's verdict
 document is saved to its run folder, before it is deleted.
 
-| # | Ticker | Goal | Run id | Kickoff time (ET) | End time (ET) | Docs | Step-2 line | Stray | Export | Anything typed mid-run | Anything odd |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| 0 | ZZZQ | excluded: setup kickoff from the template import, goal never answered | | | | | | | | | |
-| 1 | NKE | all | | | | | | | (before run 7) | | |
-| 2 | JNJ | medium | | | | | | |  | | |
-| 3 | CVX | medium | | | | | | |  | | |
-| 4 | JPM | medium | | | | | | |  | | |
-| 5 | CAT | medium | | | | | | |  | | |
-| 6 | NNE | medium | | | | | | |  | | |
-| 7 | NKE | all | | | | | | | (before run 14) | | |
-| 8 | PG | medium | | | | | | |  | | |
-| 9 | FIG | medium | | | | | | |  | | |
-| 10 | NVDA | medium | | | | | | |  | | |
-| 11 | BABA | medium | | | | | | |  | | |
-| 12 | GOOGL | medium | | | | | | |  | | |
-| 13 | ZZZQ | medium | | | | | | |  | | |
-| 14 | NKE | all | | | | | | |  | | |
-| 15 | XOM | medium | | | | | | |  | | |
+| # | Ticker | Goal | Run id | Kickoff time (ET) | End time (ET) | Outcome | Docs | Step-2 line | Stray | Export | Anything typed mid-run | Anything odd |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | ZZZQ | excluded: setup kickoff from the template import, goal never answered | | | | | | | | | | |
+| 1 | NKE | all | | | | | | | | (before run 7) | | |
+| 2 | JNJ | medium | | | | | | | |  | | |
+| 3 | CVX | medium | | | | | | | |  | | |
+| 4 | JPM | medium | | | | | | | |  | | |
+| 5 | CAT | medium | | | | | | | |  | | |
+| 6 | NNE | medium | | | | | | | |  | | |
+| 7 | NKE | all | | | | | | | | (before run 14) | | |
+| 8 | PG | medium | | | | | | | |  | | |
+| 9 | FIG | medium | | | | | | | |  | | |
+| 10 | NVDA | medium | | | | | | | |  | | |
+| 11 | BABA | medium | | | | | | | |  | | |
+| 12 | GOOGL | medium | | | | | | | |  | | |
+| 13 | ZZZQ | medium | | | | | | | |  | | |
+| 14 | NKE | all | | | | | | | |  | | |
+| 15 | XOM | medium | | | | | | | |  | | |
 
 ## 5. After the batch
 

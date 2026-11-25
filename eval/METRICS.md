@@ -75,6 +75,14 @@ scored for M3 or M5.
 
 `state.json` `history` contains an event equal to `end`. Values: yes or no. Reported as completed/runs.
 
+**Attempts, re-runs and rescues (added 24 Nov 2026, before any live run).** Every attempt in the run sheet is a row and
+is counted. An attempt that fails or aborts is M1 = no and is not re-run. The one exception is an infrastructure fault
+(Slack outage, Claude usage limit, the machine sleeping): that attempt still counts as M1 = no, with the cause
+"infrastructure", and gets exactly one re-run, which is its own row and its own attempt. A run the operator rescues by
+typing into its thread (anything other than the goal answer that changes how the run proceeds) counts as M1 = no even
+if it reaches `end`. M1 is reported as completed/attempts, and also broken down by cause (infrastructure, rescued,
+other).
+
 ### M2: Wall-clock minutes, start to end (claim 5)
 
 `at` of the first `end` event minus `at` of the first event whose text begins with `start`, in minutes (1 decimal).
@@ -241,6 +249,10 @@ metrics; the long-sentiment rule already required the tone entry.
 
 ## Changes
 
+- **24 Nov 2026, before any eval run (live-batch results seen: none):** M1 counts attempts. A failed or aborted run is
+  not re-run, except once after an infrastructure fault (logged with the reason); a rescued run counts as failed; failed
+  attempts stay in the counts. Runs are one at a time: the chief's `round goal`, `round status` and `round next` act on
+  the shared current-run pointer (tests/test_eval_run_pointer.py), so overlapping runs would write into each other.
 - **24 Nov 2026, before any eval run (live-batch results seen: none):** M10 now measures same-data stability with
   prior verdicts removed. Reason: `chief.md` step 2 quotes any earlier `verdict-<TICKER>-*` room document, so the three
   same-day NKE runs would not be independent (and runs 2 and 3 would also collide with run 1's document name,
