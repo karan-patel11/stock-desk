@@ -105,6 +105,9 @@ Future fixes, not built: say "20-F / foreign filer" in fund.py's refusal detail 
 - **Confidence rules are code, but their inputs come from the chief's instructions.** Which analyst is `no_data` or
   `not_measured` is passed in by the chief; M12 checks those inputs against the ledger. Pre-eval runs: 27/27 checks
   match ([`eval/results/after/summary.md`](../eval/results/after/summary.md)).
+- **The shipped config has news names for only 10 tickers.** `news.py --ticker` refuses any other ticker
+  (`bad_input`), so it gets no sentiment until the user adds a name; nothing warns beforehand. The Phase 4 batch adds
+  names for its tickers (`eval/config/news_names.json`).
 - _Limits of the evaluation itself to be written in Phase 6._
 
 ## Proposed next steps (not built)
@@ -112,3 +115,4 @@ Future fixes, not built: say "20-F / foreign filer" in fund.py's refusal detail 
 - Warn when a claimed value matches more than one ledger entry with a different fact or period.
 - Validate each source report with verify before using it as a clean baseline in fault injection.
 - confidence.py derives each analyst's status from the ledger itself instead of taking it as an argument.
+- `stockdesk doctor` warns when a ticker has no news name.
