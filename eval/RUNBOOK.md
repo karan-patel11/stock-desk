@@ -165,7 +165,6 @@ Sectors are GICS sectors.
 | 13 | ZZZQ | Invalid ticker | — | Well-formed, not a listed company | Absent from the 10,400-entry ticker map; no news name on purpose |
 | 1, 7, 14 | NKE | Stability (M10), goal `all` | Consumer Discretionary | The desk's reference ticker, 3 runs on one day | CIK 320187, SIC 3021; 10-Q to 2026-10-02 |
 | 15 | XOM | Thin ledger after CIK change (reported separately) | Energy | The ticker now maps to ExxonMobil Holdings Corp; fund.py follows the ticker map, so a mega-cap gets a thin ledger | CIK 2115436: 8-K12B 2026-07-01, 2 10-Qs, 4 revenue quarters; Exxon Mobil Corp's 20 10-Qs stay under CIK 34088 |
-| re-runs: add rows like 4b here (infrastructure faults only, once each) | | | | | | | | | | | | |
 
 **Large caps: 6 runs in 6 different GICS sectors:** JNJ (Health Care), CVX (Energy), CAT (Industrials), PG (Consumer
 Staples), NVDA (Information Technology), GOOGL (Communication Services). The large-cap group repeats no sector. FIG
@@ -236,6 +235,7 @@ document is saved to its run folder, before it is deleted.
 | 13 | ZZZQ | medium | | | | | | | |  | | |
 | 14 | NKE | all | | | | | | | |  | | |
 | 15 | XOM | medium | | | | | | | |  | | |
+| re-runs: add rows like 4b here (infrastructure faults only, once each) | | | | | | | | | | | | |
 
 ## 5. After the batch
 
