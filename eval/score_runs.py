@@ -57,6 +57,36 @@ LEGACY_NOTE = "log predates source field"
 ANALYST_TOOL = {"fund": "fund.py", "tech": "tech.py", "sent": "news.py"}
 MEASURED_SENT = ("positive", "negative", "neutral")
 TONE_FACT = "Average news tone"
+# M12 evidence allowlist (METRICS.md, amended 24 Nov 2026): only these fact names count as an analyst's evidence.
+METRIC_FACTS = {
+    "fund.py": ("Revenue", "Gross profit", "Operating income", "Net income", "Diluted EPS", "Total debt",
+                "LongTermDebtCurrent", "LongTermDebtNoncurrent", "Gross margin", "Operating margin", "Net margin"),
+    "tech.py": ("Last close", "SMA50", "SMA200", "Latest SMA50/SMA200 cross", "RSI(14)", "Latest volume",
+                "Average volume", "Volume vs 20-day average", "52-week high", "52-week low", "ATR(14)"),
+    "news.py": (TONE_FACT,),
+}
+
+
+def is_metric(tool: str | None, fact: str) -> bool:
+    for name in METRIC_FACTS.get(tool or "", ()):
+        if fact == name or (fact.startswith(name) and fact[len(name)] in " ,("):
+            return True
+    return False
+
+
+def ledger_counts(entries: list[dict[str, Any]]) -> tuple[dict[str, int], dict[str, int], bool]:
+    """(entries per tool, allowlisted metric entries per tool, tone entry present)."""
+    any_count: dict[str, int] = {}
+    metric_count: dict[str, int] = {}
+    has_tone = False
+    for entry in entries:
+        tool, fact = entry.get("tool"), str(entry.get("fact", ""))
+        any_count[tool] = any_count.get(tool, 0) + 1
+        if is_metric(tool, fact):
+            metric_count[tool] = metric_count.get(tool, 0) + 1
+        if tool == "news.py" and fact.startswith(TONE_FACT):
+            has_tone = True
+    return any_count, metric_count, has_tone
 
 
 def m12_checks(horizon: str, inputs: dict[str, Any], tools: dict[str, int], has_tone: bool) -> list[tuple[str, bool, bool, str]]:
@@ -89,7 +119,7 @@ RUN_COLUMNS = [
     "m6_advice_checks", "m6_advice_fails", "m6_last_advice", "m6_card_last", "m6_report_first_fails",
     "m6_report_last_fails",
     "m7_rule", "m7_horizons", "m7_match", "m7b_match",
-    "m12_checks", "m12_match", "m12_nodata_with_entries",
+    "m12_checks", "m12_match", "m12_nodata_with_entries", "m12v1_checks", "m12v1_match",
     "dir_short", "dir_medium", "dir_long", "conf_short", "conf_medium", "conf_long",
     "cap_short", "cap_medium", "cap_long",
     "notes",
@@ -383,18 +413,14 @@ def score_run(run_dir: Path, eval_runs: set[str]) -> tuple[dict[str, Any], list[
             row["m6_report_first_fails"] = sum(r["first_advice"] == "FAIL" for r in scored)
             row["m6_report_last_fails"] = sum(r["last_advice"] == "FAIL" for r in report_rows if r["last_advice"])
 
-    # Ledger by tool (M12)
-    tools: dict[str, int] = {}
-    has_tone = False
+    # Ledger by tool (M12): every entry (superseded definition) and allowlisted metric entries (current definition)
+    entries = []
     for path in run_dir.glob("E*.json"):
         try:
-            entry = read_json(path)
+            entries.append(read_json(path))
         except ValueError:
             notes.append(f"{path.name} is not JSON")
-            continue
-        tools[entry.get("tool")] = tools.get(entry.get("tool"), 0) + 1
-        if entry.get("tool") == "news.py" and str(entry.get("fact", "")).startswith(TONE_FACT):
-            has_tone = True
+    any_tools, metric_tools, has_tone = ledger_counts(entries)
 
     # M7
     row["m7_rule"] = "CAP" if row["set"] == "eval" else "KEEP"
@@ -407,7 +433,7 @@ def score_run(run_dir: Path, eval_runs: set[str]) -> tuple[dict[str, Any], list[
             notes.append("confidence.json is not JSON")
         if stored is not None:
             horizons = matches = b_checked = b_matches = 0
-            m12_total = m12_ok = m12_nd = 0
+            m12_total = m12_ok = m12_nd = v1_total = v1_ok = 0
             for horizon in HORIZONS:
                 entry = stored.get(horizon)
                 if not isinstance(entry, dict):
@@ -426,12 +452,15 @@ def score_run(run_dir: Path, eval_runs: set[str]) -> tuple[dict[str, Any], list[
                     notes.append(f"M7: {horizon} inputs incomplete ({exc})")
                     continue
                 horizons += 1
-                for analyst, ok, nd, reason in m12_checks(horizon, inputs, tools, has_tone):
+                for analyst, ok, nd, reason in m12_checks(horizon, inputs, metric_tools, has_tone):
                     m12_total += 1
                     m12_ok += ok
                     m12_nd += nd
                     if not ok:
-                        notes.append(f"M12: {horizon} {reason}")
+                        notes.append(f"M12: {horizon} {reason.replace('entries', 'metric entries')}")
+                for analyst, ok, _, reason in m12_checks(horizon, inputs, any_tools, has_tone):
+                    v1_total += 1
+                    v1_ok += ok
                 level, _ = rule(horizon, entry["direction"], stances, precedent, citations)
                 if level == entry.get("confidence"):
                     matches += 1
@@ -449,7 +478,8 @@ def score_run(run_dir: Path, eval_runs: set[str]) -> tuple[dict[str, Any], list[
                                      f"log at computed_at gives {seen['display']} {seen['uncorrected']}")
             row.update(m7_horizons=horizons, m7_match=matches)
             if m12_total:
-                row.update(m12_checks=m12_total, m12_match=m12_ok, m12_nodata_with_entries=m12_nd)
+                row.update(m12_checks=m12_total, m12_match=m12_ok, m12_nodata_with_entries=m12_nd,
+                           m12v1_checks=v1_total, m12v1_match=v1_ok)
             row["m7b_match"] = f"{b_matches}/{b_checked}" if b_checked else ""
     else:
         notes.append("no confidence.json")
@@ -554,7 +584,8 @@ def summarize(runs: list[dict[str, Any]], reports: list[dict[str, Any]]) -> str:
             bad = sum(1 for r in m12 if int(r["m12_match"]) < int(r["m12_checks"]))
             lines_m12 = (f"- **M12 analyst status matches the ledger:** {count(k12, n12)} checks; runs with a mismatch "
                          f"{count(bad, len(m12), failures=bad)}; no_data with entries (for review) "
-                         f"{sum(ints(m12, 'm12_nodata_with_entries'))}")
+                         f"{sum(ints(m12, 'm12_nodata_with_entries'))}\n  - superseded definition (any entry from the tool): "
+                         f"{count(sum(ints(m12, 'm12v1_match')), sum(ints(m12, 'm12v1_checks')))} checks")
         else:
             lines_m12 = "- **M12 analyst status matches the ledger:** no runs with confidence.json"
         if "KEEP" in rules:
