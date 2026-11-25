@@ -5,8 +5,8 @@ Prepared 24 Nov 2026. **Nothing here has been run.** You run the batch; afterwar
 
 ## 0. Decisions before the batch (yours)
 
-1. **Approve the ticker list** (section 2). It has 14 runs as specified (6 + 1 + 1 + 1 + 1 + 1 + 3). The prompt said
-   15; the composition adds to 14. A 15th is proposed: XOM, a real CIK-change case (below). Approve it or drop it.
+1. **Ticker list: approved 24 Nov 2026, 15 runs**: the 14 as composed (6 + 1 + 1 + 1 + 1 + 1 + 3) plus XOM as run 15,
+   the CIK-change case (section 2).
 2. **News names.** `news.py --ticker` only knows 10 tickers (AAPL, COST, DIS, HD, KO, MSFT, NKE, PG, TSLA, WMT);
    any other is `bad_input`, so sentiment becomes no data for every horizon. The README says to add a name before
    analyzing. Choose one:
@@ -78,7 +78,7 @@ Sources: `sec.gov/files/company_tickers.json` and `data.sec.gov` submissions and
 | 10 | Foreign company trading in the US | BABA | 1577552 | Files 20-F and 6-K only, us-gaap XBRL | us-gaap facts only on 20-F/6-K forms; no 10-Q | fund.py no_data "no quarterly revenue found" (case 5's unclear detail) | Alibaba |
 | 11 | Invalid ticker | ZZZQ | — | Well-formed, not in the SEC ticker map | absent from the 10,400-entry map | fund.py no_data; confidence.py refuses the empty run | none |
 | 12–14 | Stability (M10) | NKE ×3 | 320187 | The desk's reference ticker; same day | SIC 3021; 10-Q to 2026-10-02 | normal | (already: Nike) |
-| 15 | **Proposed**: CIK change | XOM | 2115436 | The XOM ticker now maps to ExxonMobil Holdings Corp (8-K12B 2026-07-01, 2 10-Qs); Exxon Mobil Corp's history (20 10-Qs) stays under CIK 34088 | new CIK: 4 revenue quarters | a mega-cap with a thin ledger, because fund.py follows the ticker map | Exxon |
+| 15 | CIK change (approved) | XOM | 2115436 | The XOM ticker now maps to ExxonMobil Holdings Corp (8-K12B 2026-07-01, 2 10-Qs); Exxon Mobil Corp's history (20 10-Qs) stays under CIK 34088 | new CIK: 4 revenue quarters | a mega-cap with a thin ledger, because fund.py follows the ticker map | Exxon |
 
 Alternatives if you'd rather swap: BAC for the bank (but its `Revenues` tag runs to 2026, so it would not exercise the
 bank path), CRWV for the IPO (March 2025, 9 revenue quarters), TSM for the foreign filer (IFRS-only: the clear-detail
@@ -98,7 +98,7 @@ stability ticker).
   `@desk-chief analyze <TICKER> medium`. NKE: `@desk-chief analyze NKE <goal from decision 3>`.
 - **Type nothing else mid-run** unless the desk asks. Anything you do type goes in the run sheet.
 - Suggested order, NKE spread across the batch: NKE, JNJ, CVX, JPM, CAT, NNE, NKE, PG, FIG, NVDA, BABA, GOOGL, ZZZQ,
-  NKE, then XOM if approved. Roughly 7 minutes per run plus 10-minute gaps: about 4 hours.
+  NKE, XOM. Roughly 7 minutes per run plus 10-minute gaps: about 4 hours.
 
 ## 4. Run sheet (fill in during the batch)
 
@@ -120,7 +120,7 @@ The run id is in the chief's first thread message (`r-YYYYMMDD-NN`).
 | 12 | GOOGL | | | | | |
 | 13 | ZZZQ | | | | | |
 | 14 | NKE | | | | | |
-| 15 | XOM (if approved) | | | | | |
+| 15 | XOM | | | | | |
 
 ## 5. After the batch
 
