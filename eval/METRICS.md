@@ -172,27 +172,74 @@ batch) that make a factual or causal claim with no number. Up to 40 are sampled 
 labelled by hand by one person: `supported`, `unsupported` or `not_checkable`. No LLM judging, no pre-filled labels.
 Reported as counts per label per analyst, with the sample size.
 
-### M12: Analyst status passed to confidence.py matches the ledger (claim 2, claim 3; added 24 Nov 2026)
+### M12: Analyst status passed to confidence.py matches the ledger (claim 2, claim 3; added 24 Nov 2026, amended 24 Nov 2026)
 
 confidence.py's rules are code, but the stances it receives (including `no_data` and `not_measured`) are passed by
 the chief following its instructions. M12 checks those inputs against the run's own ledger. For each horizon in
-`confidence.json`, for each analyst, using `inputs` and the run's `E*.json` entries (by `tool`):
+`confidence.json`, for each analyst, using `inputs` and the run's `E*.json` entries.
+
+**Evidence = metric entries only, by allowlist.** An entry counts as evidence for an analyst only if its `tool` is that
+analyst's tool and its `fact` is one of the names below (the fact equals the name, or the name is followed by a space,
+comma or opening bracket: "Revenue growth YoY, …" and "RSI(14) (NKE)" count). Profile and metadata entries never
+count: SIC code, fiscal year end, configured peers, sector ETF, headlines, title words, event dates, query strings,
+ticker or CIK lookups.
+
+| Tool (analyst) | Allowlisted fact names (measured financial or market metrics) | Written but never counted |
+|---|---|---|
+| fund.py (fundamental) | Revenue, Gross profit, Operating income, Net income, Diluted EPS, Total debt, LongTermDebtCurrent, LongTermDebtNoncurrent, Gross margin, Operating margin, Net margin (including their "growth YoY" and "change YoY" derivatives) | SIC code, Fiscal year end, Configured peers, Sector ETF |
+| tech.py (technical) | Last close, SMA50, SMA200, Latest SMA50/SMA200 cross, RSI(14), Latest volume, Average volume, Volume vs 20-day average, 52-week high, 52-week low, ATR(14) | (none) |
+| news.py (sentiment) | Average news tone | News article, Most repeated title words |
+
+(precedent.py is not an analyst stance and is not in M12; confidence.py reads only its "Events used" entries. Its
+"Precedent event date" entries are caller-supplied metadata.)
 
 | Analyst | Passed | Match when | Mismatch when |
 |---|---|---|---|
-| fundamental | a stance (bullish, bearish, neutral) | fund.py wrote ≥1 entry | fund.py wrote 0 entries |
-| technical | a stance | tech.py wrote ≥1 entry | tech.py wrote 0 entries |
+| fundamental | a stance (bullish, bearish, neutral) | ≥1 allowlisted fund.py entry | 0 allowlisted fund.py entries |
+| technical | a stance | ≥1 allowlisted tech.py entry | 0 allowlisted tech.py entries |
 | sentiment, short and medium | `not_measured` or `no_data` | always (interim mode measures neither window) | any measured value (positive, negative, neutral) |
-| sentiment, long | a measured value | news.py wrote an "Average news tone" entry | no tone entry |
+| sentiment, long | a measured value | an "Average news tone" entry exists | none exists |
 | sentiment, long | `no_data` | no tone entry | a tone entry exists |
-| fundamental, technical | `no_data` | always counted as a match; also counted as "no_data with entries" when that tool wrote ≥1 entry, listed for review | — |
+| fundamental, technical | `no_data` | always a match; also counted as "no_data with entries" when that tool wrote ≥1 allowlisted entry, listed for review | — |
 
-`no_data` for fundamental or technical with entries present is not a mismatch: an analyst may have entries but none
-that bear on that horizon. Reported as matches/checks (3 horizons × 3 analysts per run), runs with any mismatch, and
-the "no_data with entries" count.
+`no_data` for fundamental or technical with metric entries present is not a mismatch: an analyst may have entries but
+none that bear on that horizon. Reported as matches/checks (3 horizons × 3 analysts per run), runs with any mismatch,
+and the "no_data with entries" count.
+
+**Which tools can leave entries behind when they refuse** (checked in the code, 24 Nov 2026): fund.py writes SIC code
+and fiscal year end before it can refuse (Phase 3 cases 1 and 5), so under the superseded definition a refused
+fund.py still counted as evidence. tech.py, news.py and precedent.py raise every refusal before their first write.
+news.py can succeed partly: when the tone request fails it keeps headline and title-word entries, which are not
+metrics; the long-sentiment rule already required the tone entry.
+
+#### M12, superseded definition (24 Nov 2026, replaced the same day before any live run)
+
+>
+> confidence.py's rules are code, but the stances it receives (including `no_data` and `not_measured`) are passed by
+> the chief following its instructions. M12 checks those inputs against the run's own ledger. For each horizon in
+> `confidence.json`, for each analyst, using `inputs` and the run's `E*.json` entries (by `tool`):
+>
+> | Analyst | Passed | Match when | Mismatch when |
+> |---|---|---|---|
+> | fundamental | a stance (bullish, bearish, neutral) | fund.py wrote ≥1 entry | fund.py wrote 0 entries |
+> | technical | a stance | tech.py wrote ≥1 entry | tech.py wrote 0 entries |
+> | sentiment, short and medium | `not_measured` or `no_data` | always (interim mode measures neither window) | any measured value (positive, negative, neutral) |
+> | sentiment, long | a measured value | news.py wrote an "Average news tone" entry | no tone entry |
+> | sentiment, long | `no_data` | no tone entry | a tone entry exists |
+> | fundamental, technical | `no_data` | always counted as a match; also counted as "no_data with entries" when that tool wrote ≥1 entry, listed for review | — |
+>
+> `no_data` for fundamental or technical with entries present is not a mismatch: an analyst may have entries but none
+> that bear on that horizon. Reported as matches/checks (3 horizons × 3 analysts per run), runs with any mismatch, and
+> the "no_data with entries" count.
+>
 
 ## Changes
 
+- **24 Nov 2026, before any eval run (live-batch results seen: none):** M12 amended. Evidence is now an explicit
+  allowlist of metric fact names per tool, not "≥1 entry from that tool". Reason: Phase 3 showed fund.py writes 2
+  profile entries (SIC code, fiscal year end) before it refuses, so a fundamental stance passed after a refusal would
+  have counted as a match. tech.py, news.py and precedent.py were checked for the same hole (none leave entries on a
+  refusal). The superseded definition is kept above, marked as such. Pre-eval runs are reported under both.
 - **24 Nov 2026, before any eval run (live results: none yet):** M12 added. Found in Phase 3: confidence.py's
   inputs, including `no_data` and `not_measured`, come from the chief's instructions, not from code, so a correct
   label can rest on a wrong input. M12 checks those inputs against the ledger. Pre-eval runs were already scored for
