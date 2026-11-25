@@ -110,6 +110,14 @@ Future fixes, not built: say "20-F / foreign filer" in fund.py's refusal detail 
 - **The shipped config has news names for only 10 tickers.** `news.py --ticker` refuses any other ticker
   (`bad_input`), so it gets no sentiment until the user adds a name; nothing warns beforehand. The Phase 4 batch adds
   names for its tickers (`eval/config/news_names.json`).
+- **`stockdesk doctor` passed while Claude Code was not signed in.** Its `claude_code` check confirms the CLI exists
+  and reports a version; on 24 Nov 2026 it passed while every agent session failed with "Sign in on the execution
+  machine". Found while setting up Phase 4.
+- **Verdict documents carry across runs of the same ticker.** `chief.md` step 2 quotes any earlier
+  `verdict-<TICKER>-*` room document, so repeat runs in one room are not independent, and two same-day runs try to save
+  the same document name. Confirmed in the instructions (identical in the installed package); to be observed live.
+  For M10 the protocol removes the earlier NKE verdict before runs 2 and 3.
+- **`!reset` behaviour:** _pending the Phase 4 reset token test (eval/RUNBOOK.md, section 1b)._
 - _Limits of the evaluation itself to be written in Phase 6._
 
 ## Proposed next steps (not built)
@@ -118,3 +126,4 @@ Future fixes, not built: say "20-F / foreign filer" in fund.py's refusal detail 
 - Validate each source report with verify before using it as a clean baseline in fault injection.
 - confidence.py derives each analyst's status from the ledger itself instead of taking it as an argument.
 - `stockdesk doctor` warns when a ticker has no news name.
+- `stockdesk doctor` verifies the Claude Code CLI is signed in, not only installed.
