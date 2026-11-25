@@ -23,6 +23,7 @@ Rule (README, "How confidence works"):
       so in practice high is unreachable until sentiment measures those windows.
     CAP[horizon]: long is at most medium.
   final = clamp(min(score, MISSING_CAP if any missing, CAP[horizon]), 0, 2).
+A run with no evidence entries is refused with no_data and gets no label (nothing is written).
 The result is a judgment label, not a fact: it is not written as evidence, only to
 evidence/<run>/confidence.json, keyed by horizon.
 """
@@ -113,6 +114,9 @@ def main(argv: Sequence[str]) -> tuple[str | None, list[str], dict[str, Any]]:
     if not args.run:
         raise ToolError("bad_input", "--run is required")
     run = common.resolve_run(args.run)
+    if not common.list_evidence(run):
+        # Fail closed: stances with no evidence behind them never get a label (found in eval Phase 0, r-20261107-07).
+        raise ToolError("no_data", f"run {run} has no evidence entries; no confidence without evidence")
 
     stances = {"fund": args.fund, "tech": args.tech, "sent": args.sent}
     citations = common.citation_summary(run)

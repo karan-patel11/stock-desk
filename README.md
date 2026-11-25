@@ -461,7 +461,8 @@ chief may not set or change it. There are no percentages.
 5. Long term is capped at **medium**: the desk only has about 3 years of filings and no valuation data.
 
 News tone can only lower confidence, never raise it. The analysts' stances are passed in; precedent counts and the
-verification results are read from the run's own ledger.
+verification results are read from the run's own ledger. A run with no evidence entries gets no label at all:
+`stockdesk confidence` refuses it with `no_data`.
 
 ## Source tiers
 

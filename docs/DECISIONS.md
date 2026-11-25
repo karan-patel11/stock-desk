@@ -34,7 +34,9 @@ built, what is deferred and what is not done.
   were never stored. Additive only; older logs lack the keys and every reader ignores unknown keys.
 - Citation pass rate: IDs with a check, minus withdrawn ones; share whose latest result is PASS.
 - `confidence.py` decides confidence by fixed rules (README, "How confidence works"). Sentiment can only lower it.
-  Long term is capped at medium, and so is any horizon with an analyst not_measured or no_data. No percentage scores. If precedent was not run, only "no precedent check" applies, not
+  Long term is capped at medium, and so is any horizon with an analyst not_measured or no_data. No percentage scores.
+  A run with zero evidence entries is refused with `no_data` (24 Nov 2026): no label without evidence. `no_data`, not
+  `bad_input`, because the run id is valid and what is missing is data, the same code `evidence_table.py` uses. If precedent was not run, only "no precedent check" applies, not
   also "fewer than 3 events". Medium uses the smaller event count of its 30- and 90-day windows.
 - `evidence_table.py` renders the run's ledger for the verdict document.
 - GDELT calls are spaced at least 5.5 s apart across processes, cached, and return `rate_limited` on HTTP 429 without

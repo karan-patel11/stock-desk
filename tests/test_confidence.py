@@ -230,7 +230,8 @@ def test_no_data_still_takes_its_penalty_and_the_cap_shows_no_extra_reason(clean
 
 
 def test_cap_never_raises(run_id):
-    data = conf(run_id, sent="not_measured")  # no precedent, no checks: low stays low
+    put(run_id, "Revenue", 1.0)               # evidence, but no precedent and no checks
+    data = conf(run_id, sent="not_measured")  # low stays low
     assert data["confidence"] == "low"
 
 
@@ -260,6 +261,7 @@ def test_not_measured_on_long_still_hits_the_cap(clean):
 
 
 def test_not_measured_does_not_hide_real_penalties(run_id):
+    put(run_id, "Revenue", 1.0)
     data = conf(run_id, sent="not_measured")  # no precedent, no checks
     assert data["confidence"] == "low" and data["reasons"] == ["no precedent check", not_measured("medium")]
 
@@ -275,3 +277,25 @@ def test_not_measured_only_for_sentiment(clean):
     with pytest.raises(ToolError) as err:
         conf(clean, fund="not_measured")
     assert err.value.code == "bad_input"
+
+
+# ---------------- empty ledger fails closed (eval: r-20261107-07 got labels with zero evidence) ----------------
+
+@pytest.mark.parametrize("horizon", ["short", "medium", "long"])
+def test_empty_ledger_is_no_data_and_writes_nothing(run_id, horizon):
+    with pytest.raises(ToolError) as err:
+        conf(run_id, horizon=horizon, fund="bullish", tech="bullish", sent="neutral")
+    assert err.value.code == "no_data" and "no evidence entries" in err.value.detail
+    assert not (common.evidence_root() / run_id / "confidence.json").exists()
+
+
+def test_empty_ledger_cli_exits_1_with_no_label(run_id, capsys):
+    code = common.run_cli(lambda argv: confidence.main(argv), ["--run", run_id, "--horizon", "medium",
+                          "--direction", "bullish", "--fund", "bullish", "--tech", "bullish", "--sent", "neutral"])
+    out = json.loads(capsys.readouterr().out)
+    assert code == 1 and out["ok"] is False and out["error"] == "no_data" and "confidence" not in json.dumps(out.get("data", {}))
+
+
+def test_a_single_entry_is_enough_to_score(run_id):
+    put(run_id, "Revenue", 1.0)
+    assert conf(run_id)["confidence"] == "low"   # no precedent check: one penalty
