@@ -1,0 +1,37 @@
+run,root,set,exclusion_reason,ticker,goal,m1_completed,m2_minutes,m3_reports,m3_checked,m3_first_pass,m3_not_checked,m3_corrections,m4_passed,m4_checked,m4_uncorrected,m4_uncorrected_ids,m5_final_reports,m5_numbers_first,m5_uncited_first,m5_numbers_final,m5_uncited_final,m5_numbers_median_final,m5_final_basis,m6_advice_checks,m6_advice_fails,m6_last_advice,m6_card_last,m6_report_first_fails,m6_report_last_fails,m7_rule,m7_horizons,m7_match,m7b_match,dir_short,dir_medium,dir_long,conf_short,conf_medium,conf_long,cap_short,cap_medium,cap_long,notes
+r-20261105-01,evidence,excluded,before 7 Nov 2026,NKE,,yes,1.9,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,no reports/; no verifications.jsonl; no confidence.json
+r-20261105-02,evidence,excluded,before 7 Nov 2026,NKE,,no,,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,M2: no end event; no reports/; no verifications.jsonl; no confidence.json
+r-20261105-03,evidence,excluded,before 7 Nov 2026,NKE,,no,,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,M2: no end event; no reports/; no verifications.jsonl; no confidence.json
+r-20261105-04,evidence,excluded,before 7 Nov 2026,NKE,,no,,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,M2: no end event; no reports/; no verifications.jsonl; no confidence.json
+r-20261105-05,evidence,excluded,before 7 Nov 2026,NKE,,yes,0.1,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,no reports/; no verifications.jsonl; no confidence.json
+r-20261105-06,evidence,excluded,before 7 Nov 2026,NKE,,no,,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,M2: no end event; no reports/; no verifications.jsonl; no confidence.json
+r-20261105-07,evidence,excluded,before 7 Nov 2026,NKE,,yes,1.8,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,no reports/; no verifications.jsonl; no confidence.json
+r-20261105-08,evidence,excluded,before 7 Nov 2026,NKE,,no,,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,M2: no end event; no reports/; no verifications.jsonl; no confidence.json
+r-20261105-09,evidence,excluded,before 7 Nov 2026,NKE,,no,,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,M2: no end event; no reports/; no verifications.jsonl; no confidence.json
+r-20261105-10,evidence,excluded,before 7 Nov 2026,NKE,,yes,1.6,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,no reports/; no verifications.jsonl; no confidence.json
+r-20261105-11,evidence,excluded,before 7 Nov 2026,NKE,,yes,1.6,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,no reports/; no verifications.jsonl; no confidence.json
+r-20261105-12,evidence,excluded,before 7 Nov 2026,NKE,,yes,28.5,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,no reports/; no verifications.jsonl; no confidence.json
+r-20261105-13,evidence,excluded,before 7 Nov 2026,NKE,,yes,1.5,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,no reports/; no verifications.jsonl; no confidence.json
+r-20261105-14,evidence,excluded,before 7 Nov 2026,NKE,,yes,0.0,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,no reports/; no verifications.jsonl; no confidence.json
+r-20261105-15,evidence,excluded,before 7 Nov 2026,NKE,,yes,1.6,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,no reports/; no verifications.jsonl; no confidence.json
+r-20261105-16,evidence,excluded,before 7 Nov 2026,NKE,,yes,7.0,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,no verifications.jsonl; no confidence.json
+r-20261106-01,evidence,excluded,before 7 Nov 2026,NKE,,yes,3.6,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,no verifications.jsonl; no confidence.json
+r-20261106-02,evidence,excluded,before 7 Nov 2026,NKE,,yes,1.8,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,no reports/; no verifications.jsonl; no confidence.json
+r-20261107-01,evidence,excluded,scripted tool check,NKE,,yes,193.0,0,,,,,2,2,0,,,,,,,,,0,0,,,,,KEEP,3,3,3/3,bearish,bearish,bearish,low,low,low,low,low,low,"no reports/; M3, per-report M5/M6: log predates source field"
+r-20261107-02,evidence,excluded,scripted tool check,NKE,all,yes,0.0,1,,,,,1,1,0,,1,,,3,0,3.0,final report text,0,0,,,,,KEEP,3,3,3/3,bearish,bearish,bearish,low,low,medium,low,low,medium,"M3, per-report M5/M6: log predates source field"
+r-20261107-03,evidence,excluded,incomplete: no verifications.jsonl or confidence.json,NKE,,yes,154.7,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,no reports/; no verifications.jsonl; no confidence.json
+r-20261107-04,evidence,excluded,incomplete: no verifications.jsonl or confidence.json,NKE,,yes,0.2,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,no reports/; no verifications.jsonl; no confidence.json
+r-20261107-05,evidence,pre-eval,,NKE,medium,yes,6.8,6,,,,,28,28,0,,3,,,3,0,1.0,final report text,8,0,PASS,,,,KEEP,3,3,3/3,neutral,bearish,neutral,high,high,low,medium,medium,low,"M3, per-report M5/M6: log predates source field"
+r-20261107-06,evidence,excluded,incomplete: no verifications.jsonl or confidence.json,NKE,,yes,0.2,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,no reports/; no verifications.jsonl; no confidence.json
+r-20261107-07,evidence,excluded,scripted tool check,NKE,medium,yes,0.0,0,,,,,0,0,0,,,,,,,,,1,1,FAIL,,,,KEEP,3,3,3/3,bearish,bearish,bearish,low,low,low,low,low,low,"no reports/; M3, per-report M5/M6: log predates source field"
+r-20261107-08,evidence,excluded,scripted tool check,NKE,medium,yes,0.1,0,,,,,2,2,0,,,,,,,,,1,1,FAIL,,,,KEEP,3,3,3/3,bearish,bearish,bearish,high,high,low,medium,medium,low,"no reports/; M3, per-report M5/M6: log predates source field"
+r-20261107-09,evidence,excluded,incomplete: no verifications.jsonl or confidence.json,AAPL,,yes,0.1,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,no reports/; no verifications.jsonl; no confidence.json
+r-20261107-10,evidence,excluded,incomplete: no verifications.jsonl or confidence.json,AAPL,,yes,0.3,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,no reports/; no verifications.jsonl; no confidence.json
+r-20261107-11,evidence,pre-eval,,AAPL,short,yes,5.1,6,,,,,30,30,0,,3,,,12,1,4.0,final report text,7,0,PASS,,,,KEEP,3,3,3/3,neutral,bullish,bullish,low,low,low,low,low,low,"M3, per-report M5/M6: log predates source field"
+r-20261107-12,evidence,excluded,incomplete: no verifications.jsonl or confidence.json,AAPL,,yes,0.0,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,no reports/; no verifications.jsonl; no confidence.json
+r-20261107-13,evidence,excluded,incomplete: no verifications.jsonl or confidence.json,MSFT,,yes,0.1,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,no reports/; no verifications.jsonl; no confidence.json
+r-20261107-14,evidence,excluded,incomplete: no verifications.jsonl or confidence.json,KO,,yes,0.0,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,no reports/; no verifications.jsonl; no confidence.json
+r-20261107-15,evidence,excluded,incomplete: no verifications.jsonl or confidence.json,COST,,yes,0.0,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,no reports/; no verifications.jsonl; no confidence.json
+r-20261107-16,evidence,excluded,incomplete: no verifications.jsonl or confidence.json,WMT,,yes,0.0,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,no reports/; no verifications.jsonl; no confidence.json
+r-20261107-17,evidence,excluded,incomplete: no verifications.jsonl or confidence.json,MSFT,,yes,0.5,0,,,,,,,,,,,,,,,,,,,,,,KEEP,,,,,,,,,,,,,no reports/; no verifications.jsonl; no confidence.json
+r-20261107-18,evidence,pre-eval,,MSFT,medium,yes,4.1,7,,,,,35,35,0,,4,,,11,1,2.0,final report text,8,0,PASS,,,,KEEP,3,3,3/3,neutral,bullish,bullish,low,low,low,low,low,low,"M3, per-report M5/M6: log predates source field"

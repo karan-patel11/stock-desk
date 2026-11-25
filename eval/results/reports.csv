@@ -1,0 +1,21 @@
+run,set,file,analyst,round,final_round,checks,first_result,first_numbers,first_uncited,first_advice,last_result,last_numbers,last_uncited,last_advice,basis,notes
+r-20261107-02,excluded,technical-r1.txt,technical,1,yes,,,,,,FAIL,3,0,PASS,final report text,log predates source field
+r-20261107-05,pre-eval,fundamental-r1.txt,fundamental,1,no,,,,,,PASS,16,0,PASS,final report text,log predates source field
+r-20261107-05,pre-eval,fundamental-r2.txt,fundamental,2,yes,,,,,,PASS,1,0,PASS,final report text,log predates source field
+r-20261107-05,pre-eval,sentiment-r1.txt,sentiment,1,no,,,,,,PASS,0,0,PASS,final report text,log predates source field
+r-20261107-05,pre-eval,sentiment-r2.txt,sentiment,2,yes,,,,,,PASS,0,0,PASS,final report text,log predates source field
+r-20261107-05,pre-eval,technical-r1.txt,technical,1,no,,,,,,PASS,9,0,PASS,final report text,log predates source field
+r-20261107-05,pre-eval,technical-r2.txt,technical,2,yes,,,,,,PASS,2,0,PASS,final report text,log predates source field
+r-20261107-11,pre-eval,fundamental-r1.txt,fundamental,1,no,,,,,,PASS,17,0,PASS,final report text,log predates source field
+r-20261107-11,pre-eval,fundamental-r2.txt,fundamental,2,yes,,,,,,PASS,4,0,PASS,final report text,log predates source field
+r-20261107-11,pre-eval,sentiment-r1.txt,sentiment,1,no,,,,,,PASS,0,0,PASS,final report text,log predates source field
+r-20261107-11,pre-eval,sentiment-r2.txt,sentiment,2,yes,,,,,,FAIL,2,1,PASS,final report text,log predates source field
+r-20261107-11,pre-eval,technical-r1.txt,technical,1,no,,,,,,PASS,8,0,PASS,final report text,log predates source field
+r-20261107-11,pre-eval,technical-r2.txt,technical,2,yes,,,,,,PASS,6,0,PASS,final report text,log predates source field
+r-20261107-18,pre-eval,fundamental-r1.txt,fundamental,1,no,,,,,,PASS,14,0,PASS,final report text,log predates source field
+r-20261107-18,pre-eval,fundamental-r2.txt,fundamental,2,yes,,,,,,PASS,7,0,PASS,final report text,log predates source field
+r-20261107-18,pre-eval,sentiment-r1.txt,sentiment,1,no,,,,,,PASS,1,0,PASS,final report text,log predates source field
+r-20261107-18,pre-eval,sentiment-r2.txt,sentiment,2,yes,,,,,,FAIL,1,1,PASS,final report text,log predates source field
+r-20261107-18,pre-eval,technical-r1.txt,technical,1,no,,,,,,PASS,8,0,PASS,final report text,log predates source field
+r-20261107-18,pre-eval,technical-r2.txt,technical,2,yes,,,,,,PASS,3,0,PASS,final report text,log predates source field
+r-20261107-18,pre-eval,technical-r2c.txt,technical,2,yes,,,,,,PASS,0,0,PASS,final report text,log predates source field
