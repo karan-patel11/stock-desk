@@ -1,0 +1,7 @@
+variant,class,reason
+r-20261107-05/card-draft/wrong_id_similar,equivalent,"E364 and E285 are duplicate entries: same fact (mean excess return of NKE vs XLY, 30 sessions, 5 events), value 0.038373, period 2023-11-08/2025-11-06 and locator; precedent.py wrote it twice"
+r-20261107-05/fundamental-r1/wrong_id_similar,misattribution,"E11 is total debt at 2023-11-30 (derived); E17 is LongTermDebtNoncurrent at 2024-02-29: a different fact and a different period that happen to hold the same value"
+r-20261107-11/card-draft/wrong_id_similar,equivalent,"E271 is the mean excess return over 1 event (2025-11-26); E259 is that one event's excess return; a mean of one value equals the value"
+r-20261107-18/card-draft/wrong_id_similar,equivalent,"E258 is the mean excess return over 1 event (2024-10-30); E241 is that one event's excess return; a mean of one value equals the value"
+r-20261107-18/fundamental-r1/wrong_id_similar,misattribution,"E206 is revenue growth YoY for the quarter ended 2026-03-31; E216 is operating income growth YoY for the quarter ended 2026-06-30: a different fact and period with the same rounded value"
+r-20261107-18/fundamental-r2/wrong_id_similar,misattribution,"Same pair as fundamental-r1 (E206 revenue growth to E216 operating income growth), in the round 2 report"

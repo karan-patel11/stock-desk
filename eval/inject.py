@@ -449,7 +449,35 @@ def write_outputs(rows: list[dict[str, Any]], out: Path, seed: int) -> None:
     lines += [f"- `{r['variant']}` ({r['type']}): line {r['line']}: `{r['after']}`; {r['detail']}" for r in misses] or ["None."]
     lines += ["", f"## Faults not flagged at the injected change ({len(unflagged)})", ""]
     lines += [f"- `{r['variant']}` ({r['type']}): line {r['line']}: `{r['after']}`; {r['detail']}" for r in unflagged] or ["None."]
+    lines += ["", "## wrong_id_similar, hand-classified", ""] + similar_section(rows)
     (out / "injection.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+LABELS = HERE / "labels" / "wrong_id_similar.csv"
+
+
+def similar_section(rows: list[dict[str, Any]]) -> list[str]:
+    """Each wrong_id_similar variant was inspected by hand (eval/labels/wrong_id_similar.csv): a true equivalent
+    (the two entries hold the same fact) is excluded from detection; a misattribution counts."""
+    found = [r for r in rows if r["type"] == "wrong_id_similar" and r["expected"] != "n/a"]
+    labels = {}
+    if LABELS.is_file():
+        with open(LABELS, encoding="utf-8") as handle:
+            labels = {r["variant"]: r for r in csv.DictReader(handle)}
+    out = [f"{len(found)} variants found. Labels: `eval/labels/wrong_id_similar.csv` (one person, by inspection).", ""]
+    unlabelled = [r["variant"] for r in found if r["variant"] not in labels]
+    for r in found:
+        label = labels.get(r["variant"], {})
+        out.append(f"- `{r['variant']}`: verify {r['actual']}; {label.get('class', 'UNLABELLED')}: "
+                   f"{label.get('reason', r['detail'])}")
+    mis = [r for r in found if labels.get(r["variant"], {}).get("class") == "misattribution"]
+    eq = [r for r in found if labels.get(r["variant"], {}).get("class") == "equivalent"]
+    caught = sum(1 for r in mis if r["actual"] == "FAIL")
+    out += ["", f"Equivalent, excluded from detection: {len(eq)}/{len(found)}.",
+            f"**Misattribution detection: {caught}/{len(mis)}.**"]
+    if unlabelled:
+        out.append(f"Unlabelled (not counted): {', '.join(unlabelled)}")
+    return out
 
 
 def main(argv: list[str] | None = None) -> int:
